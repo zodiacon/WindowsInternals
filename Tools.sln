@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter04", "Chapter04", "{83E4C2CE-DD24-45E9-983D-58B01228443A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CpuLimit", "CpuLimit\CpuLimit.vcxproj", "{F7D2B649-461F-4A38-822B-CFC096D736BE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F7D2B649-461F-4A38-822B-CFC096D736BE}.Debug|x64.ActiveCfg = Debug|x64
+		{F7D2B649-461F-4A38-822B-CFC096D736BE}.Debug|x64.Build.0 = Debug|x64
+		{F7D2B649-461F-4A38-822B-CFC096D736BE}.Debug|x86.ActiveCfg = Debug|Win32
+		{F7D2B649-461F-4A38-822B-CFC096D736BE}.Debug|x86.Build.0 = Debug|Win32
+		{F7D2B649-461F-4A38-822B-CFC096D736BE}.Release|x64.ActiveCfg = Release|x64
+		{F7D2B649-461F-4A38-822B-CFC096D736BE}.Release|x64.Build.0 = Release|x64
+		{F7D2B649-461F-4A38-822B-CFC096D736BE}.Release|x86.ActiveCfg = Release|Win32
+		{F7D2B649-461F-4A38-822B-CFC096D736BE}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F7D2B649-461F-4A38-822B-CFC096D736BE} = {83E4C2CE-DD24-45E9-983D-58B01228443A}
+	EndGlobalSection
+EndGlobal
