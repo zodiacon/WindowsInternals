@@ -2,8 +2,11 @@
 //
 
 #include "stdafx.h"
+#include "resource.h"
 
 using namespace std;
+
+map<wstring, wstring> capabilitiesMap;
 
 PCSTR ArchToString(UINT32 arch) {
 	switch (arch) {
@@ -22,41 +25,15 @@ PCSTR VersionToString(const PACKAGE_VERSION* version) {
 	return buffer;
 }
 
-#ifndef SECURITY_CAPABILITY_APPOINTMENTS
-#define SECURITY_CAPABILITY_APPOINTMENTS	11
-#endif
-
-#ifndef SECURITY_CAPABILITY_CONTACTS
-#define SECURITY_CAPABILITY_CONTACTS		12
-#endif
-
-PCSTR BuiltInCapabilityToString(PCWSTR rid) {
-	switch (_wtoi(rid)) {
-	case SECURITY_CAPABILITY_INTERNET_CLIENT: return "Internet Client";
-	case SECURITY_CAPABILITY_INTERNET_CLIENT_SERVER: return "Internet Client & Server";
-	case SECURITY_CAPABILITY_PRIVATE_NETWORK_CLIENT_SERVER: return "Private Nwtworks (Client & Server)";
-	case SECURITY_CAPABILITY_PICTURES_LIBRARY: return "Pictures Library";
-	case SECURITY_CAPABILITY_VIDEOS_LIBRARY: return "Video Library";
-	case SECURITY_CAPABILITY_MUSIC_LIBRARY: return "Music Library";
-	case SECURITY_CAPABILITY_DOCUMENTS_LIBRARY: return "Documents Library";
-	case SECURITY_CAPABILITY_ENTERPRISE_AUTHENTICATION: return "Enterprise Authentication";
-	case SECURITY_CAPABILITY_SHARED_USER_CERTIFICATES: return "Shared User Certificates";
-	case SECURITY_CAPABILITY_REMOVABLE_STORAGE: return "Removable Storage";
-	case SECURITY_CAPABILITY_APPOINTMENTS: return "Appointments";
-	case SECURITY_CAPABILITY_CONTACTS: return "Contacts";
-	}
-	return nullptr;
-}
-
 void DisplayCapability(const SID_AND_ATTRIBUTES& saa) {
 	PWSTR sid;
 	::ConvertSidToStringSid(saa.Sid, &sid);
-	printf("\t%ws", sid);
-	if (::_wcsnicmp(sid, L"S-1-15-3-", 9) == 0) {
-		// if built-in capability, display friendly name
-		auto friendlyName = BuiltInCapabilityToString(sid + 9);
-		if (friendlyName)
-			printf(" %s", friendlyName);
+	auto it = capabilitiesMap.find(sid);
+	if (it != capabilitiesMap.end()) {
+		printf("%ws (%ws)", it->second.c_str(), sid);
+	}
+	else {
+		printf("%ws", sid);
 	}
 	::LocalFree(sid);
 
@@ -67,10 +44,28 @@ void DisplayCapability(const SID_AND_ATTRIBUTES& saa) {
 }
 
 void DisplayProcessInfo(HANDLE hProcess, DWORD pid) {
+	HANDLE hToken;
+	if (!::OpenProcessToken(hProcess, TOKEN_QUERY, &hToken))
+		return;
+
+	DWORD size;
+
+	// is this an AppContainer?
+	DWORD isAppContainer;
+	if (!::GetTokenInformation(hToken, TokenIsAppContainer, &isAppContainer, sizeof(DWORD), &size) || !isAppContainer) {
+		::CloseHandle(hToken);
+		return;
+	}
+
 	UINT len = 0;
 	auto error = ::GetPackageFullName(hProcess, &len, nullptr);
-	if (error == APPMODEL_ERROR_NO_PACKAGE)
-		return;
+
+	PCWSTR packageName{};
+	if (error == ERROR_SUCCESS) {
+		auto name = make_unique<wchar_t[]>(len);
+		error = ::GetPackageFullName(hProcess, &len, name.get());
+		packageName = name.get();
+	}
 
 	printf("Process ID: %6d\n", pid);
 	printf("------------------\n");
@@ -92,17 +87,12 @@ void DisplayProcessInfo(HANDLE hProcess, DWORD pid) {
 		printf("Version: %s\n", VersionToString(&id->version));
 	}
 
-	auto name = make_unique<wchar_t[]>(len);
-	error = ::GetPackageFullName(hProcess, &len, name.get());
-	assert(error == ERROR_SUCCESS);
+	if (packageName)
+		printf("Full package name: %ws\n", packageName);
 
-	printf("Full package name: %ws\n", name.get());
-
-	HANDLE hToken;
-	if (::OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
+	{
 		auto buffer = make_unique<BYTE[]>(256);
-		DWORD len;
-		if (::GetTokenInformation(hToken, TokenAppContainerSid, buffer.get(), 256, &len)) {
+		if (::GetTokenInformation(hToken, TokenAppContainerSid, buffer.get(), 256, &size)) {
 			auto appContainerSid = reinterpret_cast<SID_AND_ATTRIBUTES*>(buffer.get());
 			PWSTR sid;
 			if (appContainerSid->Sid) {
@@ -111,27 +101,80 @@ void DisplayProcessInfo(HANDLE hProcess, DWORD pid) {
 				::LocalFree(sid);
 			}
 		}
-		DWORD number;
-		if (::GetTokenInformation(hToken, TokenAppContainerNumber, &number, sizeof(DWORD), &len)) {
-			printf("Number: %u\n", number);
-		}
+	}
+
+	DWORD number;
+	if (::GetTokenInformation(hToken, TokenAppContainerNumber, &number, sizeof(DWORD), &size)) {
+		printf("Number: %u\n", number);
+	}
+	{
 		buffer = make_unique<BYTE[]>(1 << 16);
-		if (::GetTokenInformation(hToken, TokenCapabilities, buffer.get(), 1 << 16, &len)) {
+		if (::GetTokenInformation(hToken, TokenCapabilities, buffer.get(), 1 << 16, &size)) {
 			auto capabilities = reinterpret_cast<TOKEN_GROUPS*>(buffer.get());
 			printf("Capabilities: %d\n", capabilities->GroupCount);
 			for (DWORD i = 0; i < capabilities->GroupCount; i++) {
 				DisplayCapability(capabilities->Groups[i]);
 			}
 		}
-		::CloseHandle(hToken);
 	}
+
+	::CloseHandle(hToken);
 
 
 	printf("\n");
 }
 
+typedef NTSTATUS(NTAPI *PRtlDeriveCapabilitySidsFromName)(
+	PCUNICODE_STRING CapName, PSID CapabilityGroupSid, PSID CapabilitySid);
+
+#pragma comment(lib, "ntdll")
+
+void BuildCapabilityMap() {
+	auto RtlDeriveCapabilitySidsFromName = (PRtlDeriveCapabilitySidsFromName)::GetProcAddress(
+		::GetModuleHandle(L"ntdll"), "RtlDeriveCapabilitySidsFromName");
+
+	UNICODE_STRING capname;
+	auto hModule = ::GetModuleHandle(nullptr);
+	auto hResource = ::FindResource(hModule, MAKEINTRESOURCE(IDR_CAPS), L"TXT");
+
+	auto hGlobal = ::LoadResource(hModule, hResource);
+	PCSTR caps = (PCSTR)::LockResource(hGlobal);
+
+	auto sid1buffer = make_unique<BYTE[]>(SECURITY_MAX_SID_SIZE);
+	auto sid2buffer = make_unique<BYTE[]>(SECURITY_MAX_SID_SIZE);
+
+	auto sid1 = reinterpret_cast<PSID>(sid1buffer.get());
+	auto sid2 = reinterpret_cast<PSID>(sid2buffer.get());
+
+	do {
+		auto cr = ::strstr(caps, "\r\n");
+		if (!cr) break;
+
+		string name(caps, cr);
+		if (name.size() == 0)
+			break;
+
+		wstring wname(name.begin(), name.end());
+		RtlInitUnicodeString(&capname, wname.c_str());
+
+		auto status = RtlDeriveCapabilitySidsFromName(&capname, sid1, sid2);
+		if (status == 0) {
+			PWSTR ssid;
+			if (::ConvertSidToStringSid(sid2, &ssid)) {
+				capabilitiesMap.insert(make_pair(wstring(ssid), wname));
+				::LocalFree(ssid);
+			}
+		}
+		caps = cr + 2;
+	} while (true);
+
+}
+
 int main(int argc, char* argv[]) {
-	printf("List UWP Processes - version 1.0 (C)2016 by Pavel Yosifovich\n\n");
+	printf("List UWP Processes - version 1.1 (C)2016 by Pavel Yosifovich\n\n");
+	printf("Building capablities map... ");
+	BuildCapabilityMap();
+	printf("done.\n\n");
 
 	if (argc == 1) {
 		DWORD count = 1000;
@@ -155,8 +198,7 @@ int main(int argc, char* argv[]) {
 			if (!hProcess)
 				continue;
 
-			if (::IsImmersiveProcess(hProcess))
-				DisplayProcessInfo(hProcess, pid[i]);
+			DisplayProcessInfo(hProcess, pid[i]);
 
 			::CloseHandle(hProcess);
 		}

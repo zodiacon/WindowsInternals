@@ -18,3 +18,8 @@
 #include <assert.h>
 #include <sddl.h>
 #include <AppxPackaging.h>
+#include <map>
+#include <string>
+#include <strsafe.h>
+#include <winternl.h>
+
