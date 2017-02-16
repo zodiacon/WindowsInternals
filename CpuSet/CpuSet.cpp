@@ -235,11 +235,7 @@ int Error(const char* text) {
 	return code;
 }
 
-BOOL SetPrivilege(
-	HANDLE hToken,          // access token handle
-	LPCTSTR lpszPrivilege,  // name of privilege to enable/disable
-	bool bEnablePrivilege   // to enable or disable privilege
-) {
+BOOL SetPrivilege(HANDLE hToken, PCTSTR lpszPrivilege, bool bEnablePrivilege) {
 	TOKEN_PRIVILEGES tp;
 	LUID luid;
 
@@ -258,6 +254,9 @@ BOOL SetPrivilege(
 	if (!::AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), nullptr, nullptr)) {
 		return FALSE;
 	}
+
+	if (::GetLastError() == ERROR_NOT_ALL_ASSIGNED)
+		return FALSE;
 
 	return TRUE;
 }
