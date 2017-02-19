@@ -1,0 +1,15 @@
+{
+    "packageName": "CPUSTRES.zip",
+    "files": [
+      {
+        "name": "CPUSTRES.EXE",
+        "platform": "Win32",
+        "configuration": "Release"
+      },
+      {
+        "name": "CPUSTRES64.EXE",
+        "platform": "x64",
+        "configuration": "Release"
+      }
+    ]
+}

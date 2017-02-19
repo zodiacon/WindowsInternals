@@ -1,0 +1,589 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#include "afxres.h"
+#include "verrsrc.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#ifndef APSTUDIO_INVOKED\r\n"
+    "#include ""targetver.h""\r\n"
+    "#endif\r\n"
+    "#include ""afxres.h""\r\n"
+    "#include ""verrsrc.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#include ""res\\CPUStressEx.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""      // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON                    "res\\CPUStressEx.ico"
+
+IDI_KILL                ICON                    "Icons\\gear_delete.ico"
+
+IDI_PAUSE               ICON                    "Icons\\gear_pause.ico"
+
+IDI_PLAY                ICON                    "Icons\\gear_run.ico"
+
+IDI_CREATE              ICON                    "Icons\\gear_add.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MAINFRAME MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "E&xit",                       ID_APP_EXIT
+    END
+    POPUP "&Process"
+    BEGIN
+        POPUP "Priority &Class"
+        BEGIN
+            MENUITEM "&Idle",                       ID_PRIORITYCLASS_IDLE
+            MENUITEM "&Below Normal",               ID_PRIORITYCLASS_BELOWNORMAL
+            MENUITEM "&Normal",                     ID_PRIORITYCLASS_NORMAL
+            MENUITEM "&Above Normal",               ID_PRIORITYCLASS_ABOVENORMAL
+            MENUITEM "&High",                       ID_PRIORITYCLASS_HIGH
+            MENUITEM "&Realtime",                   ID_PRIORITYCLASS_REALTIME
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "A&ffinity...",                ID_PROCESS_AFFINITY
+        MENUITEM SEPARATOR
+        MENUITEM "Create &Thread",              ID_PROCESS_CREATETHREAD
+        MENUITEM "Create &4 Threads",           ID_PROCESS_CREATE4THREADS
+        MENUITEM SEPARATOR
+        MENUITEM "&Refresh\tF5",                ID_PROCESS_REFRESH
+    END
+    POPUP "&Thread"
+    BEGIN
+        MENUITEM "&Activate",                   ID_THREAD_ACTIVATE
+        MENUITEM "&Deactivate",                 ID_THREAD_DEACTIVATE
+        MENUITEM SEPARATOR
+        POPUP "Activity &Level"
+        BEGIN
+            MENUITEM "&Low (25%)",                  ID_ACTIVITYLEVEL_LOW
+            MENUITEM "&Medium (50%)",               ID_ACTIVITYLEVEL_MEDIUM
+            MENUITEM "&Busy (75%)",                 ID_ACTIVITYLEVEL_BUSY
+            MENUITEM "&Maximum (100%)",             ID_ACTIVITYLEVEL_MAXIMUM
+        END
+        POPUP "&Priority"
+        BEGIN
+            MENUITEM "&Idle (-Sat)",                ID_PRIORITY_IDLE
+            MENUITEM "&Lowest (-2)",                ID_PRIORITY_LOWEST
+            MENUITEM "&Below Normal (-1)",          ID_PRIORITY_BELOWNORMAL
+            MENUITEM "&Normal (0)",                 ID_PRIORITY_NORMAL
+            MENUITEM "&Above Normal (+1)",          ID_PRIORITY_ABOVENORMAL
+            MENUITEM "&Highest (+2)",               ID_PRIORITY_HIGHEST
+            MENUITEM "&Time Critical (+Sat)",       ID_PRIORITY_TIMECRITICAL
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "A&ffinity...",                ID_THREAD_AFFINITY
+        MENUITEM "&Ideal CPU...",               ID_THREAD_IDEALCPU
+        MENUITEM SEPARATOR
+        MENUITEM "&Kill",                       ID_THREAD_KILL
+    END
+    POPUP "&Options"
+    BEGIN
+        MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
+        MENUITEM "Auto Refresh Thread Indices", ID_OPTIONS_AUTOREFRESHTHREADINDICES, CHECKED
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&About CPUSTRES 2.0...",      ID_APP_ABOUT
+    END
+END
+
+IDR_CONTEXTMENU MENU
+BEGIN
+    POPUP "thread"
+    BEGIN
+        MENUITEM "&Activate",                   ID_THREAD_ACTIVATE
+        MENUITEM "&Deactivate",                 ID_THREAD_DEACTIVATE
+        MENUITEM SEPARATOR
+        POPUP "Activity &Level"
+        BEGIN
+            MENUITEM "&Low (25%)",                  ID_ACTIVITYLEVEL_LOW
+            MENUITEM "&Medium (50%)",               ID_ACTIVITYLEVEL_MEDIUM
+            MENUITEM "&Busy (75%)",                 ID_ACTIVITYLEVEL_BUSY
+            MENUITEM "&Maximum (100%)",             ID_ACTIVITYLEVEL_MAXIMUM
+        END
+        POPUP "&Priority"
+        BEGIN
+            MENUITEM "&Idle (-Sat)",                ID_PRIORITY_IDLE
+            MENUITEM "&Lowest (-2)",                ID_PRIORITY_LOWEST
+            MENUITEM "&Below Normal (-1)",          ID_PRIORITY_BELOWNORMAL
+            MENUITEM "&Normal (0)",                 ID_PRIORITY_NORMAL
+            MENUITEM "&Above Normal (+1)",          ID_PRIORITY_ABOVENORMAL
+            MENUITEM "&Highest (+2)",               ID_PRIORITY_HIGHEST
+            MENUITEM "&Time Critical (+Sat)",       ID_PRIORITY_TIMECRITICAL
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "A&ffinity...",                ID_THREAD_AFFINITY
+        MENUITEM "&Ideal CPU...",               ID_THREAD_IDEALCPU
+        MENUITEM SEPARATOR
+        MENUITEM "&Kill",                       ID_THREAD_KILL
+    END
+    POPUP "process"
+    BEGIN
+        POPUP "Priority &Class"
+        BEGIN
+            MENUITEM "&Idle",                       ID_PRIORITYCLASS_IDLE
+            MENUITEM "&Below Normal",               ID_PRIORITYCLASS_BELOWNORMAL
+            MENUITEM "&Normal",                     ID_PRIORITYCLASS_NORMAL
+            MENUITEM "&Above Normal",               ID_PRIORITYCLASS_ABOVENORMAL
+            MENUITEM "&High",                       ID_PRIORITYCLASS_HIGH
+            MENUITEM "&Realtime",                   ID_PRIORITYCLASS_REALTIME
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "Process A&ffinity...",        ID_PROCESS_AFFINITY
+        MENUITEM SEPARATOR
+        MENUITEM "Create &Thread",              ID_PROCESS_CREATETHREAD
+        MENUITEM "Create &4 Threads",           ID_PROCESS_CREATE4THREADS
+    END
+    POPUP "activity"
+    BEGIN
+        MENUITEM "&Low (25%)",                  ID_ACTIVITYLEVEL_LOW
+        MENUITEM "&Medium (50%)",               ID_ACTIVITYLEVEL_MEDIUM
+        MENUITEM "&Busy (75%)",                 ID_ACTIVITYLEVEL_BUSY
+        MENUITEM "&Maximum (100%)",             ID_ACTIVITYLEVEL_MAXIMUM
+    END
+    POPUP "priority"
+    BEGIN
+        MENUITEM "&Idle (-Sat)",                ID_PRIORITY_IDLE
+        MENUITEM "&Lowest (-2)",                ID_PRIORITY_LOWEST
+        MENUITEM "&Below Normal (-1)",          ID_PRIORITY_BELOWNORMAL
+        MENUITEM "&Normal (0)",                 ID_PRIORITY_NORMAL
+        MENUITEM "&Above Normal (+1)",          ID_PRIORITY_ABOVENORMAL
+        MENUITEM "&Highest (+2)",               ID_PRIORITY_HIGHEST
+        MENUITEM "&Time Critical (+Sat)",       ID_PRIORITY_TIMECRITICAL
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_MAINFRAME ACCELERATORS
+BEGIN
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
+    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
+    VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
+    VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
+    VK_F5,          ID_PROCESS_REFRESH,     VIRTKEY, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 263, 84
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About CPUStressEx"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,20,20
+    LTEXT           "CPUSTRES v2.0",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2016 Pavel Yosifovich",IDC_STATIC,42,26,170,8
+    DEFPUSHBUTTON   "OK",IDOK,106,63,50,14,WS_GROUP
+    CONTROL         "Sysinternals - www.sysinternals.com",IDC_LINK,"MfcLink",WS_TABSTOP,39,38,182,14
+END
+
+IDR_MAINFRAME DIALOGEX 0, 0, 438, 30
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "",ID_THREAD_ACTIVATE,"MfcButton",WS_TABSTOP,0,0,29,24
+    CONTROL         "",ID_THREAD_DEACTIVATE,"MfcButton",WS_TABSTOP,31,0,29,24
+    CONTROL         "",ID_PROCESS_CREATETHREAD,"MfcButton",WS_TABSTOP,77,0,29,24
+    CONTROL         "",ID_THREAD_KILL,"MfcButton",WS_TABSTOP,111,0,29,24
+    LTEXT           "Process Affinity:",IDC_PROCESS_AFFINITY,148,1,289,8
+    LTEXT           "Process Priority Class:",IDC_PRIORITYCLASS,148,16,167,8
+END
+
+IDD_AFFINITY DIALOGEX 0, 0, 239, 165
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Affinity"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,61,144,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,127,144,50,14
+    CONTROL         "CPU 0",IDC_DUMMY,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_TABSTOP,7,7,35,10
+    PUSHBUTTON      "Select All",IDC_SELECTALL,182,7,50,14
+    PUSHBUTTON      "Unselect All",IDC_UNSELECTALL,182,28,50,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 2,0,0,0
+ PRODUCTVERSION 2,0,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "Windows Internals Book Tools"
+            VALUE "FileDescription", "CPU Stress"
+            VALUE "FileVersion", "2.0.0.0"
+            VALUE "InternalName", "CPUSTRES"
+            VALUE "LegalCopyright", "Copyright (C) 2016 by Pavel Yosifovich"
+            VALUE "OriginalFilename", "CPUSTRES"
+            VALUE "ProductName", "Sysinternals CPUSTRES"
+            VALUE "ProductVersion", "2.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 256
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 77
+    END
+
+    IDR_MAINFRAME, DIALOG
+    BEGIN
+        RIGHTMARGIN, 332
+        BOTTOMMARGIN, 24
+    END
+
+    IDD_AFFINITY, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 232
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 158
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDR_MAINFRAME AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_AFFINITY AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDR_MAINFRAME DLGINIT
+BEGIN
+    ID_THREAD_ACTIVATE, 0x37c, 471, 0
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x535f, 0x7974, 0x656c, 0x353e, 
+0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x7453, 0x6c79, 0x3e65, 
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x415f, 0x7475, 0x736f, 0x7a69, 
+0x3e65, 0x4146, 0x534c, 0x3c45, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 
+0x415f, 0x7475, 0x736f, 0x7a69, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 
+0x6e6f, 0x545f, 0x6f6f, 0x746c, 0x7069, 0x413e, 0x7463, 0x7669, 0x7461, 
+0x2065, 0x6854, 0x6572, 0x6461, 0x3c73, 0x4d2f, 0x4346, 0x7542, 0x7474, 
+0x6e6f, 0x545f, 0x6f6f, 0x746c, 0x7069, 0x3c3e, 0x464d, 0x4243, 0x7475, 
+0x6f74, 0x5f6e, 0x7546, 0x6c6c, 0x6554, 0x7478, 0x6f54, 0x6c6f, 0x463e, 
+0x4c41, 0x4553, 0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x7546, 
+0x6c6c, 0x6554, 0x7478, 0x6f54, 0x6c6f, 0x3c3e, 0x464d, 0x4243, 0x7475, 
+0x6f74, 0x5f6e, 0x7543, 0x7372, 0x726f, 0x7954, 0x6570, 0x313e, 0x3c31, 
+0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x435f, 0x7275, 0x6f73, 0x5472, 
+0x7079, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 
+0x6567, 0x7954, 0x6570, 0x393e, 0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 
+0x5f6e, 0x6d49, 0x6761, 0x5465, 0x7079, 0x3e65, 0x4d3c, 0x4346, 0x7542, 
+0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 0x4449, 0x333e, 0x3231, 0x2f3c, 
+0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4965, 0x3e44, 
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 0x493e, 
+0x4944, 0x505f, 0x414c, 0x3c59, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 
+0x495f, 0x616d, 0x6567, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 
+0x6d49, 0x6761, 0x4f65, 0x546e, 0x706f, 0x463e, 0x4c41, 0x4553, 0x2f3c, 
+0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x546e, 
+0x706f, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 
+0x4f65, 0x526e, 0x6769, 0x7468, 0x463e, 0x4c41, 0x4553, 0x2f3c, 0x464d, 
+0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x526e, 0x6769, 
+0x7468, "\076" 
+    ID_THREAD_DEACTIVATE, 0x37c, 474, 0
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x535f, 0x7974, 0x656c, 0x353e, 
+0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x7453, 0x6c79, 0x3e65, 
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x415f, 0x7475, 0x736f, 0x7a69, 
+0x3e65, 0x4146, 0x534c, 0x3c45, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 
+0x415f, 0x7475, 0x736f, 0x7a69, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 
+0x6e6f, 0x545f, 0x6f6f, 0x746c, 0x7069, 0x443e, 0x6165, 0x7463, 0x7669, 
+0x7461, 0x2065, 0x6854, 0x6572, 0x6461, 0x3c73, 0x4d2f, 0x4346, 0x7542, 
+0x7474, 0x6e6f, 0x545f, 0x6f6f, 0x746c, 0x7069, 0x3c3e, 0x464d, 0x4243, 
+0x7475, 0x6f74, 0x5f6e, 0x7546, 0x6c6c, 0x6554, 0x7478, 0x6f54, 0x6c6f, 
+0x463e, 0x4c41, 0x4553, 0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 
+0x7546, 0x6c6c, 0x6554, 0x7478, 0x6f54, 0x6c6f, 0x3c3e, 0x464d, 0x4243, 
+0x7475, 0x6f74, 0x5f6e, 0x7543, 0x7372, 0x726f, 0x7954, 0x6570, 0x313e, 
+0x3c31, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x435f, 0x7275, 0x6f73, 
+0x5472, 0x7079, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 
+0x616d, 0x6567, 0x7954, 0x6570, 0x393e, 0x2f3c, 0x464d, 0x4243, 0x7475, 
+0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x5465, 0x7079, 0x3e65, 0x4d3c, 0x4346, 
+0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 0x4449, 0x333e, 0x3431, 
+0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4965, 
+0x3e44, 0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 
+0x493e, 0x4944, 0x505f, 0x5541, 0x4553, 0x2f3c, 0x464d, 0x4243, 0x7475, 
+0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 
+0x6e6f, 0x495f, 0x616d, 0x6567, 0x6e4f, 0x6f54, 0x3e70, 0x4146, 0x534c, 
+0x3c45, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 
+0x6e4f, 0x6f54, 0x3e70, 0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 
+0x616d, 0x6567, 0x6e4f, 0x6952, 0x6867, 0x3e74, 0x4146, 0x534c, 0x3c45, 
+0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 0x6e4f, 
+0x6952, 0x6867, 0x3e74, 
+    ID_PROCESS_CREATETHREAD, 0x37c, 471, 0
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x535f, 0x7974, 0x656c, 0x353e, 
+0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x7453, 0x6c79, 0x3e65, 
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x415f, 0x7475, 0x736f, 0x7a69, 
+0x3e65, 0x4146, 0x534c, 0x3c45, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 
+0x415f, 0x7475, 0x736f, 0x7a69, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 
+0x6e6f, 0x545f, 0x6f6f, 0x746c, 0x7069, 0x433e, 0x6572, 0x7461, 0x2065, 
+0x6854, 0x6572, 0x6461, 0x3c73, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 
+0x545f, 0x6f6f, 0x746c, 0x7069, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 
+0x5f6e, 0x7546, 0x6c6c, 0x6554, 0x7478, 0x6f54, 0x6c6f, 0x463e, 0x4c41, 
+0x4553, 0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x7546, 0x6c6c, 
+0x6554, 0x7478, 0x6f54, 0x6c6f, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 
+0x5f6e, 0x7543, 0x7372, 0x726f, 0x7954, 0x6570, 0x313e, 0x3c31, 0x4d2f, 
+0x4346, 0x7542, 0x7474, 0x6e6f, 0x435f, 0x7275, 0x6f73, 0x5472, 0x7079, 
+0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 
+0x7954, 0x6570, 0x393e, 0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 
+0x6d49, 0x6761, 0x5465, 0x7079, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 
+0x6e6f, 0x495f, 0x616d, 0x6567, 0x4449, 0x333e, 0x3631, 0x2f3c, 0x464d, 
+0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4965, 0x3e44, 0x4d3c, 
+0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 0x493e, 0x4944, 
+0x435f, 0x4552, 0x5441, 0x3c45, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 
+0x495f, 0x616d, 0x6567, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 
+0x6d49, 0x6761, 0x4f65, 0x546e, 0x706f, 0x463e, 0x4c41, 0x4553, 0x2f3c, 
+0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x546e, 
+0x706f, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 
+0x4f65, 0x526e, 0x6769, 0x7468, 0x463e, 0x4c41, 0x4553, 0x2f3c, 0x464d, 
+0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x526e, 0x6769, 
+0x7468, "\076" 
+    ID_THREAD_KILL, 0x37c, 467, 0
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x535f, 0x7974, 0x656c, 0x353e, 
+0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x7453, 0x6c79, 0x3e65, 
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x415f, 0x7475, 0x736f, 0x7a69, 
+0x3e65, 0x4146, 0x534c, 0x3c45, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 
+0x415f, 0x7475, 0x736f, 0x7a69, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 
+0x6e6f, 0x545f, 0x6f6f, 0x746c, 0x7069, 0x4b3e, 0x6c69, 0x206c, 0x6854, 
+0x6572, 0x6461, 0x3c73, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x545f, 
+0x6f6f, 0x746c, 0x7069, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 
+0x7546, 0x6c6c, 0x6554, 0x7478, 0x6f54, 0x6c6f, 0x463e, 0x4c41, 0x4553, 
+0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x7546, 0x6c6c, 0x6554, 
+0x7478, 0x6f54, 0x6c6f, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 
+0x7543, 0x7372, 0x726f, 0x7954, 0x6570, 0x313e, 0x3c31, 0x4d2f, 0x4346, 
+0x7542, 0x7474, 0x6e6f, 0x435f, 0x7275, 0x6f73, 0x5472, 0x7079, 0x3e65, 
+0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 0x7954, 
+0x6570, 0x393e, 0x2f3c, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 
+0x6761, 0x5465, 0x7079, 0x3e65, 0x4d3c, 0x4346, 0x7542, 0x7474, 0x6e6f, 
+0x495f, 0x616d, 0x6567, 0x4449, 0x333e, 0x3331, 0x2f3c, 0x464d, 0x4243, 
+0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4965, 0x3e44, 0x4d3c, 0x4346, 
+0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 0x6567, 0x493e, 0x4944, 0x4b5f, 
+0x4c49, 0x3c4c, 0x4d2f, 0x4346, 0x7542, 0x7474, 0x6e6f, 0x495f, 0x616d, 
+0x6567, 0x3c3e, 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 
+0x4f65, 0x546e, 0x706f, 0x463e, 0x4c41, 0x4553, 0x2f3c, 0x464d, 0x4243, 
+0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x546e, 0x706f, 0x3c3e, 
+0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x526e, 
+0x6769, 0x7468, 0x463e, 0x4c41, 0x4553, 0x2f3c, 0x464d, 0x4243, 0x7475, 
+0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x526e, 0x6769, 0x7468, "\076" 
+    0
+END
+
+IDD_ABOUTBOX DLGINIT
+BEGIN
+    IDC_LINK, 0x37c, 184, 0
+0x4d3c, 0x4346, 0x694c, 0x6b6e, 0x555f, 0x6c72, 0x683e, 0x7474, 0x3a70, 
+0x2f2f, 0x7777, 0x2e77, 0x7973, 0x6973, 0x746e, 0x7265, 0x616e, 0x736c, 
+0x632e, 0x6d6f, 0x2f3c, 0x464d, 0x4c43, 0x6e69, 0x5f6b, 0x7255, 0x3e6c, 
+0x4d3c, 0x4346, 0x694c, 0x6b6e, 0x555f, 0x6c72, 0x7250, 0x6665, 0x7869, 
+0x3c3e, 0x4d2f, 0x4346, 0x694c, 0x6b6e, 0x555f, 0x6c72, 0x7250, 0x6665, 
+0x7869, 0x3c3e, 0x464d, 0x4c43, 0x6e69, 0x5f6b, 0x6f54, 0x6c6f, 0x6974, 
+0x3e70, 0x2f3c, 0x464d, 0x4c43, 0x6e69, 0x5f6b, 0x6f54, 0x6c6f, 0x6974, 
+0x3e70, 0x4d3c, 0x4346, 0x694c, 0x6b6e, 0x465f, 0x6c75, 0x546c, 0x7865, 
+0x5474, 0x6f6f, 0x746c, 0x7069, 0x463e, 0x4c41, 0x4553, 0x2f3c, 0x464d, 
+0x4c43, 0x6e69, 0x5f6b, 0x7546, 0x6c6c, 0x6554, 0x7478, 0x6f54, 0x6c6f, 
+0x6974, 0x3e70, 
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDR_MAINFRAME           "CPU Stress (PID: $)"
+END
+
+STRINGTABLE
+BEGIN
+    AFX_IDS_APP_TITLE       "CPU Stress"
+    AFX_IDS_IDLEMESSAGE     "Ready"
+END
+
+STRINGTABLE
+BEGIN
+    ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
+    ID_APP_EXIT             "Quit the application; prompts to save documents\nExit"
+END
+
+STRINGTABLE
+BEGIN
+    ID_NEXT_PANE            "Switch to the next window pane\nNext Pane"
+    ID_PREV_PANE            "Switch back to the previous window pane\nPrevious Pane"
+END
+
+STRINGTABLE
+BEGIN
+    ID_EDIT_CLEAR           "Erase the selection\nErase"
+    ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
+    ID_EDIT_SELECT_ALL      "Select the entire document\nSelect All"
+    ID_EDIT_UNDO            "Undo the last action\nUndo"
+    ID_EDIT_REDO            "Redo the previously undone action\nRedo"
+END
+
+STRINGTABLE
+BEGIN
+    AFX_IDS_SCSIZE          "Change the window size"
+    AFX_IDS_SCMOVE          "Change the window position"
+    AFX_IDS_SCMINIMIZE      "Reduce the window to an icon"
+    AFX_IDS_SCMAXIMIZE      "Enlarge the window to full size"
+    AFX_IDS_SCNEXTWINDOW    "Switch to the next document window"
+    AFX_IDS_SCPREVWINDOW    "Switch to the previous document window"
+    AFX_IDS_SCCLOSE         "Close the active window and prompts to save the documents"
+END
+
+STRINGTABLE
+BEGIN
+    AFX_IDS_SCRESTORE       "Restore the window to normal size"
+    AFX_IDS_SCTASKLIST      "Activate Task List"
+END
+
+#endif    // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE 9, 1
+#include "res\CPUStressEx.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"      // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
