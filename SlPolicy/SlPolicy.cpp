@@ -104,7 +104,7 @@ struct LicenseFacility {
 	{ L"Shell Inbox Games", L"Games", {
 			{ L"Shell-InBoxGames-FreeCell-EnableGame", "FreeCell enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-Hearts-EnableGame", "Hearts enabled", ValueType::Bool },
-			{ L"SShell-InBoxGames-Minesweeper-EnableGame", "Minesweeper enabled", ValueType::Bool },
+			{ L"Shell-InBoxGames-Minesweeper-EnableGame", "Minesweeper enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-PurblePlace-EnableGame", "Purble Place enabled enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-Shanghai-EnableGame", "Shanghai enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-Solitaire-EnableGame", "Solitaire enabled", ValueType::Bool },
