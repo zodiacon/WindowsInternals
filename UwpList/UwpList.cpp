@@ -147,7 +147,7 @@ void BuildCapabilityMap() {
 	auto sid2 = reinterpret_cast<PSID>(sid2buffer.get());
 
 	do {
-		auto cr = ::strstr(caps, "\r\n");
+		auto cr = ::strstr(caps, "\n");
 		if (!cr) break;
 
 		string name(caps, cr);
