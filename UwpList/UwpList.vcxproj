@@ -163,9 +163,6 @@
   <ItemGroup>
     <ResourceCompile Include="UwpList.rc" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="txt1.bin" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
