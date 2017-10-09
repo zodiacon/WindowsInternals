@@ -165,7 +165,7 @@ void BuildCapabilityMap() {
 				::LocalFree(ssid);
 			}
 		}
-		caps = cr + 2;
+		caps = cr + 1;
 	} while (true);
 
 }
