@@ -150,7 +150,7 @@ void BuildCapabilityMap() {
 		auto cr = ::strstr(caps, "\n");
 		if (!cr) break;
 
-		string name(caps, cr);
+		string name(caps, cr - 1);
 		if (name.size() == 0)
 			break;
 
@@ -165,6 +165,8 @@ void BuildCapabilityMap() {
 				::LocalFree(ssid);
 			}
 		}
+		if (*cr == '\r')
+			cr++;
 		caps = cr + 1;
 	} while (true);
 
