@@ -75,5 +75,7 @@ protected:
 	afx_msg void OnProcessRefresh();
 	afx_msg void OnOptionsAutorefreshthreadindices();
 	afx_msg void OnUpdateOptionsAutorefreshthreadindices(CCmdUI *pCmdUI);
+public:
+	afx_msg void OnCpusetsSystemcpuset();
 };
 

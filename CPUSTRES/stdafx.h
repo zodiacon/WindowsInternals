@@ -34,6 +34,8 @@
 
 #include <memory>
 #include <vector>
+#include <afxcontrolbars.h>
+#include <afxcontrolbars.h>
 
 
 

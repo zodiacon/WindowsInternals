@@ -11,6 +11,7 @@
 #define IDR_CONTEXTMENU                 315
 #define IDI_CREATE                      316
 #define IDD_AFFINITY                    317
+#define IDD_CPUSETS                     321
 #define IDC_THREAD_ACTIVITY             1002
 #define IDC_DUMMY                       1003
 #define IDC_SELECTALL                   1004
@@ -19,6 +20,8 @@
 #define IDC_PRIORITYCLASS               1007
 #define IDC_MFCLINK1                    1008
 #define IDC_LINK                        1008
+#define IDC_LIST1                       1009
+#define IDC_CPUSETS                     1009
 #define ID_THREAD_ACTIVE                32771
 #define ID_THREAD_ACTIVITYLEVEL         32772
 #define ID_ACTIVITYLEVEL_LOW            32773
@@ -52,14 +55,17 @@
 #define ID_PROCESS_CREATE4THREADS       32802
 #define ID_PROCESS_REFRESH              32803
 #define ID_OPTIONS_AUTOREFRESHTHREADINDICES 32806
+#define ID_CPUSETS_SYSTEMCPUSET         32807
+#define ID_CPUSETS_PROCESSCPUSET        32808
+#define ID_CPUSETS_THREADSELECTEDCPUSET 32809
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        321
-#define _APS_NEXT_COMMAND_VALUE         32807
-#define _APS_NEXT_CONTROL_VALUE         1009
+#define _APS_NEXT_RESOURCE_VALUE        323
+#define _APS_NEXT_COMMAND_VALUE         32810
+#define _APS_NEXT_CONTROL_VALUE         1010
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

@@ -137,6 +137,12 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Kill",                       ID_THREAD_KILL
     END
+    POPUP "CPU &Sets"
+    BEGIN
+        MENUITEM "&System CPU Set...",          ID_CPUSETS_SYSTEMCPUSET
+        MENUITEM "&Process CPU Set...",         ID_CPUSETS_PROCESSCPUSET
+        MENUITEM "&Thread Selected CPU Set...", ID_CPUSETS_THREADSELECTEDCPUSET
+    END
     POPUP "&Options"
     BEGIN
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
@@ -277,6 +283,16 @@ BEGIN
     PUSHBUTTON      "Unselect All",IDC_UNSELECTALL,182,28,50,14
 END
 
+IDD_CPUSETS DIALOGEX 0, 0, 427, 190
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "System CPU Sets"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,188,169,50,14
+    CONTROL         "",IDC_CPUSETS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_ALIGNLEFT | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,24,413,132
+    LTEXT           "System CPU Sets:",IDC_STATIC,7,11,58,8
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -346,6 +362,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 158
     END
+
+    IDD_CPUSETS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 420
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 183
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -366,6 +390,11 @@ BEGIN
 END
 
 IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_CPUSETS AFX_DIALOG_LAYOUT
 BEGIN
     0
 END

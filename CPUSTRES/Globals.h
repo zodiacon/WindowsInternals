@@ -1,4 +1,5 @@
 #pragma once
+
 class CGlobals {
 public:
 	static int GetProcessorCount();

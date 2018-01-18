@@ -4,8 +4,7 @@ class CThread;
 
 // CAffinityDlg dialog
 
-class CAffinityDlg : public CDialogEx
-{
+class CAffinityDlg : public CDialogEx {
 	DECLARE_DYNAMIC(CAffinityDlg)
 
 public:

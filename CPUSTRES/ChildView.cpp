@@ -7,6 +7,7 @@
 #include "ChildView.h"
 #include "AffinityDlg.h"
 #include "Globals.h"
+#include "SystemCPUSetDlg.h"
 
 using namespace std;
 
@@ -53,6 +54,7 @@ BEGIN_MESSAGE_MAP(CChildView, CWnd)
 	ON_COMMAND(ID_PROCESS_REFRESH, &CChildView::OnProcessRefresh)
 	ON_COMMAND(ID_OPTIONS_AUTOREFRESHTHREADINDICES, &CChildView::OnOptionsAutorefreshthreadindices)
 	ON_UPDATE_COMMAND_UI(ID_OPTIONS_AUTOREFRESHTHREADINDICES, &CChildView::OnUpdateOptionsAutorefreshthreadindices)
+	ON_COMMAND(ID_CPUSETS_SYSTEMCPUSET, &CChildView::OnCpusetsSystemcpuset)
 END_MESSAGE_MAP()
 
 void CChildView::DoDataExchange(CDataExchange* pDX) {
@@ -355,4 +357,23 @@ void CChildView::OnOptionsAutorefreshthreadindices() {
 
 void CChildView::OnUpdateOptionsAutorefreshthreadindices(CCmdUI *pCmdUI) {
 	pCmdUI->SetCheck(m_AutoRefreshThreadIndices);
+}
+
+void CChildView::OnCpusetsSystemcpuset() {
+	ULONG length;
+	BOOL success = ::GetSystemCpuSetInformation(nullptr, 0, &length, ::GetCurrentProcess(), 0);
+	ASSERT(!success);
+
+	if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+		AfxMessageBox(L"CPU Sets not supported");
+		return;
+	}
+
+	auto buffer = std::make_unique<BYTE[]>(length);
+	auto cpuSets = reinterpret_cast<SYSTEM_CPU_SET_INFORMATION*>(buffer.get());
+	success = ::GetSystemCpuSetInformation(cpuSets, length, &length, ::GetCurrentProcess(), 0);
+	ASSERT(success);
+
+	CSystemCPUSetDlg dlg(cpuSets, length / cpuSets[0].Size);
+	dlg.DoModal();
 }
