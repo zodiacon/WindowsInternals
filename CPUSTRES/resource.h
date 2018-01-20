@@ -20,8 +20,8 @@
 #define IDC_PRIORITYCLASS               1007
 #define IDC_MFCLINK1                    1008
 #define IDC_LINK                        1008
-#define IDC_LIST1                       1009
 #define IDC_CPUSETS                     1009
+#define IDC_BUTTON1                     1010
 #define ID_THREAD_ACTIVE                32771
 #define ID_THREAD_ACTIVITYLEVEL         32772
 #define ID_ACTIVITYLEVEL_LOW            32773
@@ -65,7 +65,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        323
 #define _APS_NEXT_COMMAND_VALUE         32810
-#define _APS_NEXT_CONTROL_VALUE         1010
+#define _APS_NEXT_CONTROL_VALUE         1011
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

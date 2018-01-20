@@ -2,8 +2,8 @@
 #include "SystemCPUSetDlg.h"
 #include "resource.h"
 
-CSystemCPUSetDlg::CSystemCPUSetDlg(SYSTEM_CPU_SET_INFORMATION* pCpuSets, int count, CWnd* pParent) : CDialogEx(IDD_CPUSETS, pParent), 
-	m_pCpuSets(pCpuSets), m_CpuSetCount(count) {
+CSystemCPUSetDlg::CSystemCPUSetDlg(const SystemCpuSet& cpuSet, CWnd* pParent) : CDialogEx(IDD_CPUSETS, pParent), 
+	m_SystemCpuSet(cpuSet), m_CpuSetCount(cpuSet.GetCount()) {
 }
 
 void CSystemCPUSetDlg::DoDataExchange(CDataExchange * pDX) {
@@ -15,6 +15,7 @@ void CSystemCPUSetDlg::DoDataExchange(CDataExchange * pDX) {
 BOOL CSystemCPUSetDlg::OnInitDialog() {
 	CDialogEx::OnInitDialog();
 
+	m_CpuSets.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | (m_AllowSelection ? LVS_EX_CHECKBOXES : 0));
 	m_CpuSets.InsertColumn(0, L"Index", LVCFMT_LEFT, 50);
 	m_CpuSets.InsertColumn(1, L"ID", LVCFMT_CENTER, 80);
 	m_CpuSets.InsertColumn(2, L"Group", LVCFMT_CENTER, 50);
@@ -25,15 +26,23 @@ BOOL CSystemCPUSetDlg::OnInitDialog() {
 	m_CpuSets.InsertColumn(7, L"Efficiency Class", LVCFMT_CENTER, 90);
 	m_CpuSets.InsertColumn(8, L"Flags", LVCFMT_LEFT, 120);
 
-	InitSystemCpuSets();
+	InitCpuSets();
+
+	if (m_AllowSelection) {
+		if (m_hThread)
+			InitThreadCpuSet();
+		else
+			InitProcessCpuSet();
+	}
 
 	return TRUE;
 }
 
-void CSystemCPUSetDlg::InitSystemCpuSets() {
+void CSystemCPUSetDlg::InitCpuSets() {
 	CString str;
 	for (int i = 0; i < m_CpuSetCount; i++) {
-		const auto& set = m_pCpuSets[i].CpuSet;
+		const auto& set = m_SystemCpuSet.GetCpuSet(i).CpuSet;
+
 		str.Format(L"%d", i + 1);
 		int n = m_CpuSets.InsertItem(i, str);
 		str.Format(L"%d (0x%X)", set.Id, set.Id);
@@ -70,3 +79,46 @@ void CSystemCPUSetDlg::InitSystemCpuSets() {
 	}
 }
 
+void CSystemCPUSetDlg::InitProcessCpuSet() {
+	auto cpuSets = std::make_unique<ULONG[]>(m_SystemCpuSet.GetCount());
+	ULONG count;
+	VERIFY(::GetProcessDefaultCpuSets(::GetCurrentProcess(), cpuSets.get(), m_SystemCpuSet.GetCount(), &count));
+
+	for (int i = 0; i < static_cast<int>(count == 0 ? m_SystemCpuSet.GetCount() : count); i++) {
+		m_CpuSets.SetCheck(count == 0 ? i : cpuSets[i] - m_SystemCpuSet.GetCpuSet(0).CpuSet.Id);
+	}
+}
+
+void CSystemCPUSetDlg::InitThreadCpuSet() {
+	auto cpuSets = std::make_unique<ULONG[]>(m_SystemCpuSet.GetCount());
+	ULONG count;
+	VERIFY(::GetThreadSelectedCpuSets(m_hThread, cpuSets.get(), m_SystemCpuSet.GetCount(), &count));
+
+	for (int i = 0; i < static_cast<int>(count == 0 ? m_SystemCpuSet.GetCount() : count); i++) {
+		m_CpuSets.SetCheck(count == 0 ? i : cpuSets[i] - m_SystemCpuSet.GetCpuSet(0).CpuSet.Id);
+	}
+}
+
+void CSystemCPUSetDlg::OnOK() {
+	if (m_AllowSelection) {
+		CArray<ULONG, ULONG> set;
+		for (int i = 0; i < m_SystemCpuSet.GetCount(); i++) {
+			if (m_CpuSets.GetCheck(i)) {
+				set.Add(m_SystemCpuSet.GetCpuSet(i).CpuSet.Id);
+			}
+		}
+
+		if (m_hThread) {
+			if (!::SetThreadSelectedCpuSets(m_hThread, set.GetCount() == 0 ? nullptr : set.GetData(), (ULONG)set.GetCount())) {
+				AfxMessageBox(L"Failed to set thread selected CPU Set");
+			}
+		}
+		else {
+			if (!::SetProcessDefaultCpuSets(::GetCurrentProcess(), set.GetCount() == 0 ? nullptr : set.GetData(), (ULONG)set.GetCount())) {
+				AfxMessageBox(L"Failed to set process default CPU Set");
+			}
+		}
+	}
+
+	CDialogEx::OnOK();
+}

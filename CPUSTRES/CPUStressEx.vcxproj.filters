@@ -48,6 +48,9 @@
     <ClInclude Include="SystemCPUSetDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SystemCpuSet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CPUStressEx.cpp">
@@ -75,6 +78,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SystemCPUSetDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemCpuSet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

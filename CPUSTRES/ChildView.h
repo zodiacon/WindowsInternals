@@ -65,7 +65,7 @@ protected:
 	void OnUpdateProcessCreate4threads(CCmdUI *pCmdUI);
 	void OnChangeThreadPriority(UINT id);
 	void OnUpdateChangeThreadPriority(CCmdUI* pCmdUI);
-
+	
 	afx_msg void OnThreadAffinity();
 	afx_msg void OnThreadIdealcpu();
 //	afx_msg void OnProcessAffinity();
@@ -75,7 +75,10 @@ protected:
 	afx_msg void OnProcessRefresh();
 	afx_msg void OnOptionsAutorefreshthreadindices();
 	afx_msg void OnUpdateOptionsAutorefreshthreadindices(CCmdUI *pCmdUI);
-public:
 	afx_msg void OnCpusetsSystemcpuset();
+public:
+	afx_msg void OnCpusetsProcesscpuset();
+	afx_msg void OnCpusetsThreadselectedcpuset();
+	afx_msg void OnUpdateCpusetsThreadselectedcpuset(CCmdUI *pCmdUI);
 };
 

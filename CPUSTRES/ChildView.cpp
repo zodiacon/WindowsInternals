@@ -8,6 +8,7 @@
 #include "AffinityDlg.h"
 #include "Globals.h"
 #include "SystemCPUSetDlg.h"
+#include "SystemCpuSet.h"
 
 using namespace std;
 
@@ -55,6 +56,9 @@ BEGIN_MESSAGE_MAP(CChildView, CWnd)
 	ON_COMMAND(ID_OPTIONS_AUTOREFRESHTHREADINDICES, &CChildView::OnOptionsAutorefreshthreadindices)
 	ON_UPDATE_COMMAND_UI(ID_OPTIONS_AUTOREFRESHTHREADINDICES, &CChildView::OnUpdateOptionsAutorefreshthreadindices)
 	ON_COMMAND(ID_CPUSETS_SYSTEMCPUSET, &CChildView::OnCpusetsSystemcpuset)
+	ON_COMMAND(ID_CPUSETS_PROCESSCPUSET, &CChildView::OnCpusetsProcesscpuset)
+	ON_COMMAND(ID_CPUSETS_THREADSELECTEDCPUSET, &CChildView::OnCpusetsThreadselectedcpuset)
+	ON_UPDATE_COMMAND_UI(ID_CPUSETS_THREADSELECTEDCPUSET, &CChildView::OnUpdateCpusetsThreadselectedcpuset)
 END_MESSAGE_MAP()
 
 void CChildView::DoDataExchange(CDataExchange* pDX) {
@@ -360,20 +364,53 @@ void CChildView::OnUpdateOptionsAutorefreshthreadindices(CCmdUI *pCmdUI) {
 }
 
 void CChildView::OnCpusetsSystemcpuset() {
-	ULONG length;
-	BOOL success = ::GetSystemCpuSetInformation(nullptr, 0, &length, ::GetCurrentProcess(), 0);
-	ASSERT(!success);
-
-	if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+	SystemCpuSet systemCpuSet;
+	if (!systemCpuSet.Init()) {
 		AfxMessageBox(L"CPU Sets not supported");
 		return;
 	}
 
-	auto buffer = std::make_unique<BYTE[]>(length);
-	auto cpuSets = reinterpret_cast<SYSTEM_CPU_SET_INFORMATION*>(buffer.get());
-	success = ::GetSystemCpuSetInformation(cpuSets, length, &length, ::GetCurrentProcess(), 0);
-	ASSERT(success);
-
-	CSystemCPUSetDlg dlg(cpuSets, length / cpuSets[0].Size);
+	CSystemCPUSetDlg dlg(systemCpuSet);
 	dlg.DoModal();
+}
+
+
+void CChildView::OnCpusetsProcesscpuset() {
+	SystemCpuSet systemCpuSet;
+	if (!systemCpuSet.Init()) {
+		AfxMessageBox(L"CPU Sets not supported");
+		return;
+	}
+
+	CSystemCPUSetDlg dlg(systemCpuSet);
+	dlg.SetAllowSelection(true);
+	dlg.DoModal();
+}
+
+
+void CChildView::OnCpusetsThreadselectedcpuset() {
+	auto selectedThreads = GetSelectedThreads();
+	auto& thread = selectedThreads[0].first;
+	SystemCpuSet systemCpuSet;
+	if (!systemCpuSet.Init()) {
+		AfxMessageBox(L"CPU Sets not supported");
+		return;
+	}
+
+	HANDLE hThread = ::OpenThread(THREAD_SET_LIMITED_INFORMATION | THREAD_QUERY_LIMITED_INFORMATION, FALSE, thread->GetThreadId());
+	if (!hThread) {
+		AfxMessageBox(L"Failed to happen thread handle");
+		return;
+	}
+
+	CSystemCPUSetDlg dlg(systemCpuSet);
+	dlg.SetAllowSelection(true, hThread);
+	dlg.DoModal();
+
+	::CloseHandle(hThread);
+}
+
+
+void CChildView::OnUpdateCpusetsThreadselectedcpuset(CCmdUI *pCmdUI) {
+	pCmdUI->Enable(m_List.GetSelectedCount() == 1);
 }
