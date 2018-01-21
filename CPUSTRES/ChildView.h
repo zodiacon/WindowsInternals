@@ -37,6 +37,8 @@ private:
 	LARGE_INTEGER m_LastQueryCount, m_QueryFrequency;
 	long long m_LastProcessTimes = 0;
 	double m_ProcessCPU;
+	HANDLE m_hJob = nullptr;
+	int m_CpuUpdateInterval = 1000, m_CpuUpdateIndex = 1;
 
 	void CreateThreads();
 	std::unique_ptr<CThread> CreateThread();
@@ -90,5 +92,8 @@ protected:
 
 	void OnUpdateStatusThreads(CCmdUI*);
 	void OnUpdateStatusProcessCpu(CCmdUI*);
+	afx_msg void OnProcessCpuratelimit();
+	void OnCpuUpdateInterval(UINT id);
+	void OnUpdateCpuUpdateInterval(CCmdUI*);
 };
 

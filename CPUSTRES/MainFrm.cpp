@@ -35,6 +35,9 @@ CMainFrame::CMainFrame() {
 CMainFrame::~CMainFrame() {}
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
+	// increase chance of UI thread to be responsive
+	::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+
 	if(CFrameWnd::OnCreate(lpCreateStruct) == -1)
 		return -1;
 

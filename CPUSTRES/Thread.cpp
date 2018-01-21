@@ -77,15 +77,15 @@ int CThread::GetIdealCPU() const {
 	return n.Number;
 }
 
-ULONG CThread::GetCPUTime(const LARGE_INTEGER& frequency) const {
+long long CThread::GetCPUTime(const LARGE_INTEGER& frequency) const {
 	FILETIME kernel, user, dummy;
 	VERIFY(::GetThreadTimes(m_hThread, &dummy, &dummy, &kernel, &user));
 	LARGE_INTEGER counter;
 	VERIFY(::QueryPerformanceCounter(&counter));
 	auto total = *(long long*)&kernel + *(long long*)&user;
-	ULONG cpu = 0;
+	long long cpu = 0;
 	if (m_LastCpu > 0) {
-		cpu = static_cast<ULONG>((total - m_LastCpu) * 1000000LL / ((counter.QuadPart - m_LastCounter.QuadPart) * 1000000LL / frequency.QuadPart));
+		cpu = (total - m_LastCpu) * 10000 / ((counter.QuadPart - m_LastCounter.QuadPart) * 1000000LL / frequency.QuadPart);
 	}
 
 	m_LastCounter = counter;

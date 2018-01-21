@@ -50,7 +50,7 @@ public:
 	DWORD SetIdealCPU(int n);
 	int GetIdealCPU() const;
 
-	ULONG GetCPUTime(const LARGE_INTEGER& frequency) const;
+	long long GetCPUTime(const LARGE_INTEGER& frequency) const;
 
 	void Terminate();
 	void Suspend();

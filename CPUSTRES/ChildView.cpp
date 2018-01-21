@@ -63,6 +63,10 @@ BEGIN_MESSAGE_MAP(CChildView, CWnd)
 
 	ON_UPDATE_COMMAND_UI(ID_STATUS_THREAD, OnUpdateStatusThreads)
 	ON_UPDATE_COMMAND_UI(ID_STATUS_PROCESSCPU, OnUpdateStatusProcessCpu)
+	ON_COMMAND(ID_PROCESS_CPURATELIMIT, &CChildView::OnProcessCpuratelimit)
+
+	ON_COMMAND_RANGE(ID_CPUUPDATEINTERVAL_0, ID_CPUUPDATEINTERVAL_10SECONDS, OnCpuUpdateInterval)
+	ON_UPDATE_COMMAND_UI_RANGE(ID_CPUUPDATEINTERVAL_0, ID_CPUUPDATEINTERVAL_10SECONDS, OnUpdateCpuUpdateInterval)
 END_MESSAGE_MAP()
 
 void CChildView::DoDataExchange(CDataExchange* pDX) {
@@ -113,9 +117,9 @@ int CChildView::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	m_List.InsertColumn(2, L"Active?", LVCFMT_CENTER, 80);
 	m_List.InsertColumn(3, L"Activity", LVCFMT_LEFT, 80);
 	m_List.InsertColumn(4, L"Priority", LVCFMT_LEFT, 100);
-	m_List.InsertColumn(5, L"Ideal CPU", LVCFMT_CENTER, 80);
+	m_List.InsertColumn(5, L"Ideal CPU", LVCFMT_CENTER, 70);
 	m_List.InsertColumn(6, L"Affinity", LVCFMT_RIGHT, 120);
-	m_List.InsertColumn(7, L"CPU (%)", LVCFMT_RIGHT, 80);
+	m_List.InsertColumn(7, L"CPU (%)", LVCFMT_CENTER, 80);
 
 	VERIFY(::QueryPerformanceFrequency(&m_QueryFrequency));
 	VERIFY(::QueryPerformanceCounter(&m_LastQueryCount));
@@ -123,7 +127,7 @@ int CChildView::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	CreateThreads();
 
 	SetTimer(1, 10000, nullptr);
-	SetTimer(2, 1000, nullptr);
+	SetTimer(2, m_CpuUpdateInterval, nullptr);
 
 	return 0;
 }
@@ -468,7 +472,7 @@ void CChildView::UpdateCPUTimes() {
 	for (auto& thread : m_Threads) {
 		if (thread->IsActive()) {
 			auto cpu = thread->GetCPUTime(m_QueryFrequency) / CGlobals::GetProcessorCount();
-			text.Format(L"%.2f", cpu / 100000.0);
+			text.Format(L"%.2lf", cpu / 1000.0);
 			m_List.SetItemText(i, 7, text);
 		}
 		else {
@@ -498,3 +502,25 @@ void CChildView::OnUpdateStatusProcessCpu(CCmdUI* pCmdUI) {
 	text.Format(L"Process CPU: %.2f %%", m_ProcessCPU);
 	pCmdUI->SetText(text);
 }
+
+
+void CChildView::OnProcessCpuratelimit() {
+	if (m_hJob == nullptr) {
+		m_hJob = ::CreateJobObject(nullptr, nullptr);
+		ASSERT(m_hJob);
+		VERIFY(::AssignProcessToJobObject(m_hJob, ::GetCurrentProcess()));
+	}
+}
+
+void CChildView::OnCpuUpdateInterval(UINT id) {
+	static const int intervals[] = { 500, 1000, 2000, 5000, 10000 };
+	m_CpuUpdateIndex = id - ID_CPUUPDATEINTERVAL_0;
+	m_CpuUpdateInterval = intervals[m_CpuUpdateIndex];
+	SetTimer(2, m_CpuUpdateInterval, nullptr);
+}
+
+void CChildView::OnUpdateCpuUpdateInterval(CCmdUI* pCmdUI) {
+	pCmdUI->SetRadio(pCmdUI->m_nID - ID_CPUUPDATEINTERVAL_0 == m_CpuUpdateIndex);
+}
+
+

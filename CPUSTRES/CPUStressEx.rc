@@ -103,6 +103,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "A&ffinity...",                ID_PROCESS_AFFINITY
+        MENUITEM "CPU Rate &Limit...",          ID_PROCESS_CPURATELIMIT
         MENUITEM "CPU &Set...",                 ID_CPUSETS_PROCESSCPUSET
         MENUITEM SEPARATOR
         MENUITEM "Create &Thread",              ID_PROCESS_CREATETHREAD
@@ -150,6 +151,14 @@ BEGIN
     BEGIN
         MENUITEM "&Always on Top",              ID_OPTIONS_ALWAYSONTOP
         MENUITEM "Auto Refresh Thread Indices", ID_OPTIONS_AUTOREFRESHTHREADINDICES, CHECKED
+        POPUP "&CPU Update Interval"
+        BEGIN
+            MENUITEM "0.5 Second",                  ID_CPUUPDATEINTERVAL_0
+            MENUITEM "1 Second",                    ID_CPUUPDATEINTERVAL_1SECOND
+            MENUITEM "2 Seconds",                   ID_CPUUPDATEINTERVAL_2SECONDS
+            MENUITEM "5 Seconds",                   ID_CPUUPDATEINTERVAL_5SECONDS
+            MENUITEM "10 Seconds",                  ID_CPUUPDATEINTERVAL_10SECONDS
+        END
     END
     POPUP "&Help"
     BEGIN
@@ -184,6 +193,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "A&ffinity...",                ID_THREAD_AFFINITY
         MENUITEM "&Ideal CPU...",               ID_THREAD_IDEALCPU
+        MENUITEM "&Selected CPU Set...",        ID_CPUSETS_THREADSELECTEDCPUSET
         MENUITEM SEPARATOR
         MENUITEM "&Kill",                       ID_THREAD_KILL
     END
@@ -550,7 +560,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDR_MAINFRAME           "CPU Stress (PID: $)"
+    IDR_MAINFRAME           "CPU Stress v2.1 (PID: $)"
 END
 
 STRINGTABLE
