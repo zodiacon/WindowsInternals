@@ -50,6 +50,8 @@ public:
 	DWORD SetIdealCPU(int n);
 	int GetIdealCPU() const;
 
+	ULONG GetCPUTime(const LARGE_INTEGER& frequency) const;
+
 	void Terminate();
 	void Suspend();
 	void Resume();
@@ -67,6 +69,8 @@ private:
 	ActivityLevel m_ActivityLevel = ActivityLevel::Low;
 	bool m_Active = false;
 	DWORD_PTR m_Affinity;
+	mutable long long m_LastCpu = 0;
+	mutable LARGE_INTEGER m_LastCounter;
 };
 
 

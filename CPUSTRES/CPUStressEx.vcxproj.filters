@@ -51,6 +51,9 @@
     <ClInclude Include="SystemCpuSet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CPUStressEx.cpp">
@@ -86,6 +89,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CPUStressEx.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+    <ResourceCompile Include="CPUSTRES.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>

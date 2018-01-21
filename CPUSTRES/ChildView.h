@@ -33,6 +33,10 @@ private:
 	std::vector < std::unique_ptr<CThread>> m_Threads;
 	std::vector<DWORD> m_CurrentThreadIds;
 	bool m_AutoRefreshThreadIndices = true;
+	int m_TotalThreads;
+	LARGE_INTEGER m_LastQueryCount, m_QueryFrequency;
+	long long m_LastProcessTimes = 0;
+	double m_ProcessCPU;
 
 	void CreateThreads();
 	std::unique_ptr<CThread> CreateThread();
@@ -40,6 +44,9 @@ private:
 	static PCWSTR ActivityLevelToString(ActivityLevel level);
 	static PCWSTR ThreadPriorityToString(int priority);
 	void UpdateThreadProcessIndices();
+	BOOL QueueItemForThreadPool(int busyPercent);
+	static DWORD CALLBACK BurnSomeCycles(int percent);
+	void UpdateCPUTimes();
 
 	// Generated message map functions
 protected:
@@ -76,9 +83,12 @@ protected:
 	afx_msg void OnOptionsAutorefreshthreadindices();
 	afx_msg void OnUpdateOptionsAutorefreshthreadindices(CCmdUI *pCmdUI);
 	afx_msg void OnCpusetsSystemcpuset();
-public:
 	afx_msg void OnCpusetsProcesscpuset();
 	afx_msg void OnCpusetsThreadselectedcpuset();
 	afx_msg void OnUpdateCpusetsThreadselectedcpuset(CCmdUI *pCmdUI);
+	afx_msg void OnProcessQueuethreadpoolwork();
+
+	void OnUpdateStatusThreads(CCmdUI*);
+	void OnUpdateStatusProcessCpu(CCmdUI*);
 };
 

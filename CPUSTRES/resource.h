@@ -5,6 +5,8 @@
 #define IDD_ABOUTBOX                    100
 #define IDR_MAINFRAME                   128
 #define IDR_CPUStressExTYPE             130
+#define ID_STATUS_THREAD                310
+#define ID_STATUS_PROCESSCPU            311
 #define IDI_PLAY                        312
 #define IDI_KILL                        313
 #define IDI_PAUSE                       314
@@ -21,7 +23,6 @@
 #define IDC_MFCLINK1                    1008
 #define IDC_LINK                        1008
 #define IDC_CPUSETS                     1009
-#define IDC_BUTTON1                     1010
 #define ID_THREAD_ACTIVE                32771
 #define ID_THREAD_ACTIVITYLEVEL         32772
 #define ID_ACTIVITYLEVEL_LOW            32773
@@ -58,14 +59,15 @@
 #define ID_CPUSETS_SYSTEMCPUSET         32807
 #define ID_CPUSETS_PROCESSCPUSET        32808
 #define ID_CPUSETS_THREADSELECTEDCPUSET 32809
+#define ID_PROCESS_QUEUETHREADPOOLWORK  32810
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        323
-#define _APS_NEXT_COMMAND_VALUE         32810
+#define _APS_NEXT_COMMAND_VALUE         32811
 #define _APS_NEXT_CONTROL_VALUE         1011
-#define _APS_NEXT_SYMED_VALUE           310
+#define _APS_NEXT_SYMED_VALUE           312
 #endif
 #endif

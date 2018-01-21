@@ -10,7 +10,7 @@
 
 CThread::CThread() {
 	int cpus = CGlobals::GetProcessorCount();
-	if(cpus == sizeof(DWORD_PTR) * 8)
+	if (cpus == sizeof(DWORD_PTR) * 8)
 		m_Affinity = (DWORD_PTR)-1;
 	else
 		m_Affinity = (((DWORD_PTR)1) << cpus) - 1;
@@ -21,7 +21,7 @@ CThread::CThread() {
 CThread::~CThread() {
 	::CloseHandle(m_hThread);
 	::CloseHandle(m_hTerminate);
-} 
+}
 
 void CThread::Suspend() {
 	if (!IsActive()) return;
@@ -46,7 +46,7 @@ DWORD CThread::ThreadFunction() {
 	for (;;) {
 		if (::WaitForSingleObject(hTerminate, 0) == WAIT_OBJECT_0)
 			break;
-		
+
 		auto level = m_ActivityLevel;
 		if (level != ActivityLevel::Maximum) {
 			auto time = ::GetTickCount();
@@ -77,11 +77,28 @@ int CThread::GetIdealCPU() const {
 	return n.Number;
 }
 
+ULONG CThread::GetCPUTime(const LARGE_INTEGER& frequency) const {
+	FILETIME kernel, user, dummy;
+	VERIFY(::GetThreadTimes(m_hThread, &dummy, &dummy, &kernel, &user));
+	LARGE_INTEGER counter;
+	VERIFY(::QueryPerformanceCounter(&counter));
+	auto total = *(long long*)&kernel + *(long long*)&user;
+	ULONG cpu = 0;
+	if (m_LastCpu > 0) {
+		cpu = static_cast<ULONG>((total - m_LastCpu) * 1000000LL / ((counter.QuadPart - m_LastCounter.QuadPart) * 1000000LL / frequency.QuadPart));
+	}
+
+	m_LastCounter = counter;
+	m_LastCpu = total;
+
+	return cpu;
+}
+
 void CThread::Terminate() {
 	m_ActivityLevel = ActivityLevel::None;
 	::SetEvent(m_hTerminate);
 	Resume();
-	if(::WaitForSingleObject(m_hThread, 500) == WAIT_TIMEOUT)
+	if (::WaitForSingleObject(m_hThread, 500) == WAIT_TIMEOUT)
 		::TerminateThread(m_hThread, 1);
 }
 

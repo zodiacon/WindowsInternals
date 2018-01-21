@@ -39,7 +39,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 		return -1;
 
 	// create a view to occupy the client area of the frame
-	if(!m_wndView.Create(NULL, NULL, AFX_WS_DEFAULT_VIEW, CRect(), this, AFX_IDW_PANE_FIRST)) {
+	if(!m_wndView.Create(nullptr, nullptr, AFX_WS_DEFAULT_VIEW, CRect(), this, AFX_IDW_PANE_FIRST)) {
 		TRACE0("Failed to create view window\n");
 		return -1;
 	}
@@ -48,6 +48,11 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 		TRACE0("Failed to create dialogbar\n");
 		return -1;
 	}
+
+	m_StatusBar.Create(this);
+	UINT indicators[] = { ID_STATUS_THREAD, ID_STATUS_PROCESSCPU };
+
+	m_StatusBar.SetIndicators(indicators, _countof(indicators));
 
 	SetProcessAffinityText();
 	SetProcessPriorityClassText();

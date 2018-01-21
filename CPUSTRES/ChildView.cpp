@@ -59,6 +59,10 @@ BEGIN_MESSAGE_MAP(CChildView, CWnd)
 	ON_COMMAND(ID_CPUSETS_PROCESSCPUSET, &CChildView::OnCpusetsProcesscpuset)
 	ON_COMMAND(ID_CPUSETS_THREADSELECTEDCPUSET, &CChildView::OnCpusetsThreadselectedcpuset)
 	ON_UPDATE_COMMAND_UI(ID_CPUSETS_THREADSELECTEDCPUSET, &CChildView::OnUpdateCpusetsThreadselectedcpuset)
+	ON_COMMAND(ID_PROCESS_QUEUETHREADPOOLWORK, &CChildView::OnProcessQueuethreadpoolwork)
+
+	ON_UPDATE_COMMAND_UI(ID_STATUS_THREAD, OnUpdateStatusThreads)
+	ON_UPDATE_COMMAND_UI(ID_STATUS_PROCESSCPU, OnUpdateStatusProcessCpu)
 END_MESSAGE_MAP()
 
 void CChildView::DoDataExchange(CDataExchange* pDX) {
@@ -111,10 +115,15 @@ int CChildView::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	m_List.InsertColumn(4, L"Priority", LVCFMT_LEFT, 100);
 	m_List.InsertColumn(5, L"Ideal CPU", LVCFMT_CENTER, 80);
 	m_List.InsertColumn(6, L"Affinity", LVCFMT_RIGHT, 120);
+	m_List.InsertColumn(7, L"CPU (%)", LVCFMT_RIGHT, 80);
+
+	VERIFY(::QueryPerformanceFrequency(&m_QueryFrequency));
+	VERIFY(::QueryPerformanceCounter(&m_LastQueryCount));
 
 	CreateThreads();
 
 	SetTimer(1, 10000, nullptr);
+	SetTimer(2, 1000, nullptr);
 
 	return 0;
 }
@@ -170,6 +179,7 @@ PCWSTR CChildView::ThreadPriorityToString(int priority) {
 
 void CChildView::UpdateThreadProcessIndices() {
 	auto threads = CGlobals::EnumerateThreads(::GetCurrentProcessId());
+	m_TotalThreads = static_cast<int>(threads.size());
 	if (m_CurrentThreadIds == threads)
 		return;
 
@@ -190,6 +200,21 @@ void CChildView::UpdateThreadProcessIndices() {
 		}
 		i++;
 	}
+}
+
+BOOL CChildView::QueueItemForThreadPool(int busyPercent) {
+	return ::QueueUserWorkItem([](auto param) { 
+		return BurnSomeCycles(static_cast<int>(reinterpret_cast<INT_PTR>(param))); 
+	}, reinterpret_cast<PVOID>(static_cast<INT_PTR>(busyPercent)), WT_EXECUTEDEFAULT);
+}
+
+DWORD CChildView::BurnSomeCycles(int percent) {
+	int time = (int)::GetTickCount();
+	while ((int)::GetTickCount() - time < percent * 10)
+		;		// burn CPU cycles
+
+	::Sleep(1000 - percent * 10);
+	return percent;
 }
 
 unique_ptr<CThread> CChildView::CreateThread() {
@@ -342,7 +367,15 @@ void CChildView::OnThreadKill() {
 }
 
 void CChildView::OnTimer(UINT_PTR nIDEvent) {
-	UpdateThreadProcessIndices();
+	switch (nIDEvent) {
+	case 1:
+		UpdateThreadProcessIndices();
+		break;
+
+	case 2:
+		UpdateCPUTimes();
+		break;
+	}
 }
 
 void CChildView::OnProcessRefresh() {
@@ -413,4 +446,55 @@ void CChildView::OnCpusetsThreadselectedcpuset() {
 
 void CChildView::OnUpdateCpusetsThreadselectedcpuset(CCmdUI *pCmdUI) {
 	pCmdUI->Enable(m_List.GetSelectedCount() == 1);
+}
+
+
+void CChildView::OnProcessQueuethreadpoolwork() {
+	if (!QueueItemForThreadPool(50)) {
+		AfxMessageBox(L"Failed to queue work item to thread pool");
+		return;
+	}
+}
+
+void CChildView::OnUpdateStatusThreads(CCmdUI* pCmdUI) {
+	CString text;
+	text.Format(L"Total threads: %d", m_TotalThreads);
+	pCmdUI->SetText(text);
+}
+
+void CChildView::UpdateCPUTimes() {
+	int i = 0;
+	CString text;
+	for (auto& thread : m_Threads) {
+		if (thread->IsActive()) {
+			auto cpu = thread->GetCPUTime(m_QueryFrequency) / CGlobals::GetProcessorCount();
+			text.Format(L"%.2f", cpu / 100000.0);
+			m_List.SetItemText(i, 7, text);
+		}
+		else {
+			m_List.SetItemText(i, 7, L"");
+		}
+		i++;
+	}
+
+	FILETIME dummy, kernel, user;
+	VERIFY(::GetProcessTimes(::GetCurrentProcess(), &dummy, &dummy, &kernel, &user));
+
+	LARGE_INTEGER counter;
+	VERIFY(::QueryPerformanceCounter(&counter));
+	auto total = *(long long*)&kernel + *(long long*)&user;
+	ULONG cpu = 0;
+	if (m_LastProcessTimes > 0) {
+		cpu = static_cast<ULONG>((total - m_LastProcessTimes) * 1000000LL / ((counter.QuadPart - m_LastQueryCount.QuadPart) * 1000000LL / m_QueryFrequency.QuadPart));
+		m_ProcessCPU = cpu / CGlobals::GetProcessorCount() / 100000.0;
+	}
+
+	m_LastQueryCount = counter;
+	m_LastProcessTimes = total;
+}
+
+void CChildView::OnUpdateStatusProcessCpu(CCmdUI* pCmdUI) {
+	CString text;
+	text.Format(L"Process CPU: %.2f %%", m_ProcessCPU);
+	pCmdUI->SetText(text);
 }

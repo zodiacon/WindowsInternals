@@ -37,6 +37,7 @@ public:
 protected:  // control bar embedded members
 	CDialogBar  m_wndDlgBar;
 	CChildView	m_wndView;
+	CStatusBar m_StatusBar;
 
 	// Generated message map functions
 protected:

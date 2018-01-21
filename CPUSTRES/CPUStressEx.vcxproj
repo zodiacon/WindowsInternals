@@ -147,6 +147,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -173,6 +174,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -192,6 +194,7 @@
     <ClInclude Include="Globals.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="resource1.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="SystemCpuSet.h" />
     <ClInclude Include="SystemCPUSetDlg.h" />
@@ -217,6 +220,7 @@
     <ClCompile Include="ThreadsListCtrl.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ResourceCompile Include="CPUSTRES.rc" />
     <ResourceCompile Include="CPUStressEx.rc" />
   </ItemGroup>
   <ItemGroup>

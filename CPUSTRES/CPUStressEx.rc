@@ -107,6 +107,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Create &Thread",              ID_PROCESS_CREATETHREAD
         MENUITEM "Create &4 Threads",           ID_PROCESS_CREATE4THREADS
+        MENUITEM "&Queue Thread Pool Work",     ID_PROCESS_QUEUETHREADPOOLWORK
         MENUITEM SEPARATOR
         MENUITEM "&Refresh\tF5",                ID_PROCESS_REFRESH
     END
@@ -251,12 +252,12 @@ END
 
 IDD_ABOUTBOX DIALOGEX 0, 0, 263, 84
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "About CPUStressEx"
+CAPTION "About CPUSTRES"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,14,14,20,20
-    LTEXT           "CPUSTRES v2.0",IDC_STATIC,42,14,114,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2016 Pavel Yosifovich",IDC_STATIC,42,26,170,8
+    LTEXT           "CPUSTRES v2.1",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2016-2018 Pavel Yosifovich",IDC_STATIC,42,26,170,8
     DEFPUSHBUTTON   "OK",IDOK,106,63,50,14,WS_GROUP
     CONTROL         "Sysinternals - www.sysinternals.com",IDC_LINK,"MfcLink",WS_TABSTOP,39,38,182,14
 END
@@ -594,6 +595,12 @@ STRINGTABLE
 BEGIN
     AFX_IDS_SCRESTORE       "Restore the window to normal size"
     AFX_IDS_SCTASKLIST      "Activate Task List"
+END
+
+STRINGTABLE
+BEGIN
+    ID_STATUS_THREAD        "Total Threads: 000"
+    ID_STATUS_PROCESSCPU    "Process CPU: 100.10%"
 END
 
 #endif    // English (United States) resources
