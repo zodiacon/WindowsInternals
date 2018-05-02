@@ -132,10 +132,39 @@ int CChildView::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	return 0;
 }
 
+AppSettings CChildView::ReadConfiguration() {
+	AppSettings config { 4, 1, ActivityLevel::Low };
+	wchar_t path[MAX_PATH];
+	if (0 == ::GetModuleFileName(nullptr, path, MAX_PATH))
+		return config;
+
+	*::wcsrchr(path, L'.') = L'\0';
+	::wcscat_s(path, L".ini");
+
+	const wchar_t AppName[] = L"Config";
+
+	config.InitialThreads = ::GetPrivateProfileInt(AppName, L"InitialThreads", 4, path);
+	if (config.InitialThreads < 1 || config.InitialThreads > 128)
+		config.InitialThreads = 1;
+
+	config.ActiveThreads = ::GetPrivateProfileInt(AppName, L"ActiveThreads", 1, path);
+	if (config.ActiveThreads < 0)
+		config.ActiveThreads = 0;
+
+	config.ActivityLevel = static_cast<ActivityLevel>(::GetPrivateProfileInt(AppName, L"ActivityLevel", 1, path));
+	if (config.ActivityLevel < ActivityLevel::Low || config.ActivityLevel > ActivityLevel::Maximum)
+		config.ActivityLevel = ActivityLevel::Low;
+
+	return config;
+}
+
 void CChildView::CreateThreads() {
-	for (int i = 0; i < 4; i++) {
+	auto config = ReadConfiguration();
+
+	for (int i = 0; i < config.InitialThreads; i++) {
 		auto thread = CreateThread();
-		if (i == 0)
+		thread->SetActivityLevel(config.ActivityLevel);
+		if (i < config.ActiveThreads)
 			thread->Resume();
 		AddThread(thread);
 	}

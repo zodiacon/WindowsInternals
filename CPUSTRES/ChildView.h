@@ -4,6 +4,12 @@
 #include "Thread.h"
 #include "ThreadsListCtrl.h"
 
+struct AppSettings {
+	int InitialThreads;
+	int ActiveThreads;
+	ActivityLevel ActivityLevel;
+};
+
 // CChildView window
 
 class CChildView : public CWnd {
@@ -49,6 +55,7 @@ private:
 	BOOL QueueItemForThreadPool(int busyPercent);
 	static DWORD CALLBACK BurnSomeCycles(int percent);
 	void UpdateCPUTimes();
+	AppSettings ReadConfiguration();
 
 	// Generated message map functions
 protected:
