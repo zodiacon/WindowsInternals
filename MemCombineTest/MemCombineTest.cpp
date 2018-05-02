@@ -45,7 +45,7 @@ int main() {
 
 	getchar();
 
-	// change a sinlge byte
+	// change a single byte
 
 	p1[0]++;
 
