@@ -266,10 +266,9 @@ CAPTION "About CPUSTRES"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,14,14,20,20
-    LTEXT           "CPUSTRES v2.1",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "CPUSTRES v2.2",IDC_STATIC,42,14,114,8,SS_NOPREFIX
     LTEXT           "Copyright (C) 2016-2018 Pavel Yosifovich",IDC_STATIC,42,26,170,8
     DEFPUSHBUTTON   "OK",IDOK,106,63,50,14,WS_GROUP
-    CONTROL         "Sysinternals - www.sysinternals.com",IDC_LINK,"MfcLink",WS_TABSTOP,39,38,182,14
 END
 
 IDR_MAINFRAME DIALOGEX 0, 0, 438, 30
@@ -314,8 +313,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,0,0,0
- PRODUCTVERSION 2,0,0,0
+ FILEVERSION 2,2,0,0
+ PRODUCTVERSION 2,2,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -332,12 +331,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Windows Internals Book Tools"
             VALUE "FileDescription", "CPU Stress"
-            VALUE "FileVersion", "2.0.0.0"
+            VALUE "FileVersion", "2.2.0.0"
             VALUE "InternalName", "CPUSTRES"
-            VALUE "LegalCopyright", "Copyright (C) 2016 by Pavel Yosifovich"
+            VALUE "LegalCopyright", "Copyright (C) 2016-2018 by Pavel Yosifovich"
             VALUE "OriginalFilename", "CPUSTRES"
-            VALUE "ProductName", "Sysinternals CPUSTRES"
-            VALUE "ProductVersion", "2.0.0.0"
+            VALUE "ProductName", "CPUSTRES"
+            VALUE "ProductVersion", "2.2.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -532,23 +531,6 @@ BEGIN
 0x464d, 0x4243, 0x7475, 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x526e, 
 0x6769, 0x7468, 0x463e, 0x4c41, 0x4553, 0x2f3c, 0x464d, 0x4243, 0x7475, 
 0x6f74, 0x5f6e, 0x6d49, 0x6761, 0x4f65, 0x526e, 0x6769, 0x7468, "\076" 
-    0
-END
-
-IDD_ABOUTBOX DLGINIT
-BEGIN
-    IDC_LINK, 0x37c, 184, 0
-0x4d3c, 0x4346, 0x694c, 0x6b6e, 0x555f, 0x6c72, 0x683e, 0x7474, 0x3a70, 
-0x2f2f, 0x7777, 0x2e77, 0x7973, 0x6973, 0x746e, 0x7265, 0x616e, 0x736c, 
-0x632e, 0x6d6f, 0x2f3c, 0x464d, 0x4c43, 0x6e69, 0x5f6b, 0x7255, 0x3e6c, 
-0x4d3c, 0x4346, 0x694c, 0x6b6e, 0x555f, 0x6c72, 0x7250, 0x6665, 0x7869, 
-0x3c3e, 0x4d2f, 0x4346, 0x694c, 0x6b6e, 0x555f, 0x6c72, 0x7250, 0x6665, 
-0x7869, 0x3c3e, 0x464d, 0x4c43, 0x6e69, 0x5f6b, 0x6f54, 0x6c6f, 0x6974, 
-0x3e70, 0x2f3c, 0x464d, 0x4c43, 0x6e69, 0x5f6b, 0x6f54, 0x6c6f, 0x6974, 
-0x3e70, 0x4d3c, 0x4346, 0x694c, 0x6b6e, 0x465f, 0x6c75, 0x546c, 0x7865, 
-0x5474, 0x6f6f, 0x746c, 0x7069, 0x463e, 0x4c41, 0x4553, 0x2f3c, 0x464d, 
-0x4c43, 0x6e69, 0x5f6b, 0x7546, 0x6c6c, 0x6554, 0x7478, 0x6f54, 0x6c6f, 
-0x6974, 0x3e70, 
     0
 END
 
