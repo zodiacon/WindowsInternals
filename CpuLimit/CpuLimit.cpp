@@ -29,17 +29,25 @@ int main(int argc, const char* argv[]) {
 
 	HANDLE hJob = ::CreateJobObject(nullptr, nullptr);
 	if (!hJob)
+	{
+		::CloseHandle(hProcess);
 		return Error(::GetLastError());
-
+	}
 	if (!::AssignProcessToJobObject(hJob, hProcess))
+	{
+		::CloseHandle(hProcess);
+		::CloseHandle(hJob);
 		return Error(::GetLastError());
-
+	}
 	JOBOBJECT_CPU_RATE_CONTROL_INFORMATION info = { JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP };
 	info.CpuRate = atoi(argv[2]) * 100;
 
 	if (!::SetInformationJobObject(hJob, JobObjectCpuRateControlInformation, &info, sizeof(info)))
+	{
+		::CloseHandle(hProcess);
+		::CloseHandle(hJob);
 		return Error(::GetLastError());
-
+	}
 	::CloseHandle(hProcess);
 	::CloseHandle(hJob);
 
