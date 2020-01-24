@@ -164,9 +164,9 @@ void PrintAllowedCpuSet(int pid) {
 			return;
 		}
 
-		ULONG ids[32];
+		ULONG ids[64];
 		DWORD count;
-		auto success = ::GetProcessDefaultCpuSets(hProcess, ids, 256, &count);
+		auto success = ::GetProcessDefaultCpuSets(hProcess, ids, _countof(ids), &count);
 		if (success) {
 			for (ULONG i = 0; i < count; i++) {
 				printf("%d: ", i);

@@ -22,7 +22,7 @@ int main() {
 	UNICODE_STRING nameString, valueString;
 
 	for (ULONG i = 0; i < apiSetMap->Count; i++) {
-		auto isSealed = nsEntry->Flags & API_SET_SCHEMA_ENTRY_FLAGS_SEALED != 0;
+		auto isSealed = (nsEntry->Flags & API_SET_SCHEMA_ENTRY_FLAGS_SEALED) != 0;
 
 		//
 		// Build a UNICODE_STRING for this contract

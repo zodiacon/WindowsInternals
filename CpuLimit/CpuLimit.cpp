@@ -34,7 +34,8 @@ int main(int argc, const char* argv[]) {
 	if (!::AssignProcessToJobObject(hJob, hProcess))
 		return Error(::GetLastError());
 
-	JOBOBJECT_CPU_RATE_CONTROL_INFORMATION info = { JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP };
+	JOBOBJECT_CPU_RATE_CONTROL_INFORMATION info;
+	info.ControlFlags = JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP;
 	info.CpuRate = atoi(argv[2]) * 100;
 
 	if (!::SetInformationJobObject(hJob, JobObjectCpuRateControlInformation, &info, sizeof(info)))
