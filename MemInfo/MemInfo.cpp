@@ -60,9 +60,10 @@ NTSTATUS PfiQueryMemoryRanges() {
 	ULONG ResultLength = 0;
 
 	//
-	// Memory Ranges API was added in RTM, this is Version 1
+	// Memory Ranges API was added in RTM, this is Version 1. Since Windows 10 it is Version 2.
 	//
-	MemoryRangeInfo.Version = 1;
+	MemoryRangeInfo.Version = 2;
+	MemoryRangeInfo.flags = 0;
 
 	//
 	// Build the Superfetch Information Buffer
@@ -84,7 +85,8 @@ NTSTATUS PfiQueryMemoryRanges() {
 		// Reallocate memory
 		//
 		MemoryRanges = static_cast<PPF_MEMORY_RANGE_INFO>(::HeapAlloc(GetProcessHeap(), 0, ResultLength));
-		MemoryRanges->Version = 1;
+		MemoryRanges->Version = 2;
+		MemoryRanges->flags = 0;
 
 		//
 		// Rebuild the buffer

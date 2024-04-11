@@ -139,11 +139,21 @@ typedef struct _PF_PHYSICAL_MEMORY_RANGE {
 	ULONG_PTR PageCount;
 } PF_PHYSICAL_MEMORY_RANGE, *PPF_PHYSICAL_MEMORY_RANGE;
 
+/*
 typedef struct _PF_MEMORY_RANGE_INFO {
 	ULONG Version;
 	ULONG RangeCount;
 	PF_PHYSICAL_MEMORY_RANGE Ranges[ANYSIZE_ARRAY];
 } PF_MEMORY_RANGE_INFO, *PPF_MEMORY_RANGE_INFO;
+*/
+//Information from https://blog.midi12.re/systemsuperfetchinformation/
+typedef struct _PF_MEMORY_RANGE_INFO {
+	ULONG Version;
+	ULONG flags; // added between 10_1709_16299_248 and 10_1803_17134_81
+	ULONG RangeCount;
+	PF_PHYSICAL_MEMORY_RANGE Ranges[ANYSIZE_ARRAY];
+} PF_MEMORY_RANGE_INFO, * PPF_MEMORY_RANGE_INFO;
+
 
 //
 // Sub-Information Types for PFN Identity
