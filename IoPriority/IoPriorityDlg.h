@@ -32,12 +32,13 @@ protected:
 		UINT StatusId;
 	};
 
-	HANDLE m_hThread[2];
+	HANDLE m_hThread[2]{};
 	ThreadData m_ThreadData[2];
 	CEvent m_CancelEvent;
 	bool m_Working = false;
 
 	static DWORD CALLBACK IoThread(PVOID);
+	void StopThreads();
 
 	// Generated message map functions
 	virtual BOOL OnInitDialog();
@@ -47,5 +48,6 @@ protected:
 	DECLARE_MESSAGE_MAP()
 	afx_msg void OnBnClickedStart();
 	afx_msg void OnBnClickedCancel();
-	afx_msg void OnClose();
+	void OnOK() override;
+	void OnCancel() override;
 };

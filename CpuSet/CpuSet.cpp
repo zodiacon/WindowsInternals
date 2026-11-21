@@ -2,6 +2,9 @@
 //
 
 #include "stdafx.h"
+#include <cctype>
+#include <cerrno>
+#include <cstdlib>
 
 
 typedef enum _SYSTEM_INFORMATION_CLASS {
@@ -202,28 +205,33 @@ void PrintAllowedCpuSet(int pid) {
 	}
 }
 
-template<typename T>
-bool ParseCPUSet(T* pSet, const char* text, int& count) {
-	bool last = false;
-	for (int i = 0; !last && i < 32; i++) {
-		if (*text == '\0')
-			return true;
-		auto comma = strchr(text, ',');
-		if (comma == text)
+// Parses a comma-separated list of decimal or 0x-prefixed hex masks into pSet.
+// Fails on malformed or out-of-range values, or more than N entries.
+template<typename T, size_t N>
+bool ParseCPUSet(T (&pSet)[N], const char* text, int& count) {
+	count = 0;
+	while (*text != '\0') {
+		if (count == static_cast<int>(N))
 			return false;
-		if (comma == nullptr) {
-			comma = text + strlen(text);
-			last = true;
-		}
-		size_t len = comma - text;
-		bool hex = false;
-		if (len > 2 && (::strncmp(text, "0x", 2) == 0 || ::strncmp(text, "0X", 2) == 0))
-			hex = true;
 
-		int value = std::stoi(std::string(text + (hex ? 2 : 0), comma), nullptr, hex ? 16 : 10);
-		pSet[i] = value;
-		text = comma + 1;
-		count = i + 1;
+		bool hex = text[0] == '0' && (text[1] == 'x' || text[1] == 'X');
+		const char* start = text + (hex ? 2 : 0);
+		// strtoull would otherwise accept leading whitespace and a sign
+		if (!(hex ? ::isxdigit(static_cast<unsigned char>(*start)) : ::isdigit(static_cast<unsigned char>(*start))))
+			return false;
+
+		char* end;
+		errno = 0;
+		unsigned long long value = ::strtoull(start, &end, hex ? 16 : 10);
+		if (errno == ERANGE || (*end != ',' && *end != '\0'))
+			return false;
+
+		pSet[count++] = static_cast<T>(value);
+		if (*end == '\0')
+			break;
+		text = end + 1;
+		if (*text == '\0')
+			return false;	// trailing comma
 	}
 
 	return true;
@@ -299,7 +307,6 @@ int main(int argc, char** argv) {
 	bool system = false;
 	DWORD pid = 0;
 	int n = -1;
-	ULONG cpuSet[64];
 	ULONG64 systemCpuSet[20];
 	int count = 0;
 	bool change = false;
@@ -355,7 +362,7 @@ int main(int argc, char** argv) {
 		}
 
 		auto pSet = systemCpuSet;
-		if (count == 1 && cpuSet[0] == 0) {
+		if (count == 1 && systemCpuSet[0] == 0) {
 			pSet = nullptr;
 			count = 0;
 		}

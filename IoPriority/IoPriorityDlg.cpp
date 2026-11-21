@@ -61,7 +61,6 @@ BEGIN_MESSAGE_MAP(CIoPriorityDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_START, &CIoPriorityDlg::OnBnClickedStart)
 	ON_BN_CLICKED(IDC_CANCEL, &CIoPriorityDlg::OnBnClickedCancel)
-	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 
@@ -83,7 +82,7 @@ DWORD CIoPriorityDlg::IoThread(PVOID p) {
 	DWORD written;
 
 	::WriteFile(hFile, buffer, size, &written, nullptr);
-	DWORD count = 0;
+	ULONGLONG count = 0;	// 64-bit: count * 1000 overflows a DWORD on fast disks
 	auto hDlg = pData->pThis->m_hWnd;
 	auto tick = ::GetTickCount();
 	CString status;
@@ -105,7 +104,7 @@ DWORD CIoPriorityDlg::IoThread(PVOID p) {
 		auto current = ::GetTickCount();
 		if (current - tick < 500)
 			continue;
-		status.Format(L"I/O Speed: %d bytes/sec", count * 1000 / (current - tick));
+		status.Format(L"I/O Speed: %llu bytes/sec", count * 1000 / (current - tick));
 		tick = ::GetTickCount();
 		::SetDlgItemText(hDlg, pData->StatusId, status);
 		count = 0;
@@ -220,30 +219,45 @@ void CIoPriorityDlg::OnBnClickedStart() {
 
 
 void CIoPriorityDlg::OnBnClickedCancel() {
-	m_CancelEvent.SetEvent();
+	StopThreads();
+}
 
-	do {
-		auto rc = ::MsgWaitForMultipleObjectsEx(2, m_hThread, INFINITE, QS_SENDMESSAGE | QS_PAINT, MWMO_INPUTAVAILABLE);
-		if (rc < WAIT_OBJECT_0 + 2)
-			break;
-		AfxGetApp()->PumpMessage();
-
-	} while (true);
-
+void CIoPriorityDlg::StopThreads() {
+	if (!m_Working)
+		return;
 	m_Working = false;
 
-	::CloseHandle(m_hThread[0]);
-	::CloseHandle(m_hThread[1]);
+	m_CancelEvent.SetEvent();
+
+	// Wait for each thread in turn: waiting on both handles at once returns when either one exits.
+	// The workers SendMessage to this dialog (IsDlgButtonChecked, SetDlgItemText), so keep
+	// servicing sent messages while waiting, or both sides deadlock.
+	for (auto& hThread : m_hThread) {
+		if (!hThread)
+			continue;
+		for (;;) {
+			auto rc = ::MsgWaitForMultipleObjectsEx(1, &hThread, INFINITE, QS_SENDMESSAGE, MWMO_INPUTAVAILABLE);
+			if (rc != WAIT_OBJECT_0 + 1)
+				break;
+			MSG msg;
+			::PeekMessage(&msg, nullptr, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE);
+		}
+		::CloseHandle(hThread);
+		hThread = nullptr;
+	}
 
 	GetDlgItem(IDC_START)->EnableWindow(TRUE);
 	GetDlgItem(IDC_CANCEL)->EnableWindow(FALSE);
-
 }
 
+// Esc, Enter and the close box all end the dialog through OnOK/OnCancel; stop the
+// worker threads first, since they reference this (stack-allocated) dialog.
+void CIoPriorityDlg::OnOK() {
+	StopThreads();
+	CDialogEx::OnOK();
+}
 
-void CIoPriorityDlg::OnClose() {
-	if(m_Working)
-		OnBnClickedCancel();
-
-	CDialogEx::OnClose();
+void CIoPriorityDlg::OnCancel() {
+	StopThreads();
+	CDialogEx::OnCancel();
 }

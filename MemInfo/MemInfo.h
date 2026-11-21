@@ -146,6 +146,16 @@ typedef struct _PF_MEMORY_RANGE_INFO {
 } PF_MEMORY_RANGE_INFO, *PPF_MEMORY_RANGE_INFO;
 
 //
+// Version 2 (required by current Windows 10/11 builds, which reject version 1)
+//
+typedef struct _PF_MEMORY_RANGE_INFO_V2 {
+	ULONG Version;
+	ULONG Flags;
+	ULONG RangeCount;
+	PF_PHYSICAL_MEMORY_RANGE Ranges[ANYSIZE_ARRAY];
+} PF_MEMORY_RANGE_INFO_V2, *PPF_MEMORY_RANGE_INFO_V2;
+
+//
 // Sub-Information Types for PFN Identity
 //
 typedef struct _MEMORY_FRAME_INFORMATION {

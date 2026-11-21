@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "MemInfo.h"
+#include <unordered_set>
 
 #define SUPERFETCH_VERSION      45
 #define SUPERFETCH_MAGIC        'kuhC'
@@ -16,14 +17,15 @@ SIZE_T MmHighestPhysicalPage;
 ULONG MmHighestPhysicalPageNumber;
 PPF_PFN_PRIO_REQUEST MmPfnDatabase;
 RTL_BITMAP MmVaBitmap, MmPfnBitMap;
-PPF_PRIVSOURCE_QUERY_REQUEST MmPrivateSources;
 LIST_ENTRY MmProcessListHead;
 ULONG MmProcessCount;
 LIST_ENTRY MmFileListHead;
 ULONG MmFileCount;
 ULONG MmPfnDatabaseSize;
 HANDLE PfiFileInfoHandle;
-PPF_MEMORY_RANGE_INFO MemoryRanges;
+PPF_PHYSICAL_MEMORY_RANGE MemoryRanges;	// points into MemoryRangesBuffer
+ULONG MemoryRangeCount;
+PVOID MemoryRangesBuffer;
 
 void PrintHeader() {
 	printf("MemInfo v3.10 - Show PFN database information\n");
@@ -53,77 +55,80 @@ void PfiBuildSuperfetchInfo(IN PSUPERFETCH_INFORMATION SuperfetchInfo, IN PVOID 
 	SuperfetchInfo->InfoClass = InfoClass;
 }
 
-NTSTATUS PfiQueryMemoryRanges() {
+NTSTATUS PfiQueryMemoryRangesVersion(ULONG Version) {
 	NTSTATUS Status;
 	SUPERFETCH_INFORMATION SuperfetchInfo;
-	PF_MEMORY_RANGE_INFO MemoryRangeInfo;
+	ULONG Length = 4096;
 	ULONG ResultLength = 0;
+	PVOID Buffer;
 
-	//
-	// Memory Ranges API was added in RTM, this is Version 1
-	//
-	MemoryRangeInfo.Version = 1;
-
-	//
-	// Build the Superfetch Information Buffer
-	//
-	PfiBuildSuperfetchInfo(&SuperfetchInfo,
-		&MemoryRangeInfo,
-		sizeof(MemoryRangeInfo),
-		SuperfetchMemoryRangesQuery);
-
-	//
-	// Query the Memory Ranges
-	//
-	Status = NtQuerySystemInformation(SystemSuperfetchInformation,
-		&SuperfetchInfo,
-		sizeof(SuperfetchInfo),
-		&ResultLength);
-	if (Status == STATUS_BUFFER_TOO_SMALL) {
-		//
-		// Reallocate memory
-		//
-		MemoryRanges = static_cast<PPF_MEMORY_RANGE_INFO>(::HeapAlloc(GetProcessHeap(), 0, ResultLength));
-		MemoryRanges->Version = 1;
+	for (;;) {
+		Buffer = ::HeapAlloc(::GetProcessHeap(), HEAP_ZERO_MEMORY, Length);
+		if (!Buffer)
+			return STATUS_NO_MEMORY;
 
 		//
-		// Rebuild the buffer
+		// The version is the first field in both layouts
 		//
+		*static_cast<PULONG>(Buffer) = Version;
+
 		PfiBuildSuperfetchInfo(&SuperfetchInfo,
-			MemoryRanges,
-			ResultLength,
+			Buffer,
+			Length,
 			SuperfetchMemoryRangesQuery);
 
-		//
-		// Query memory information
-		//
 		Status = NtQuerySystemInformation(SystemSuperfetchInformation,
 			&SuperfetchInfo,
 			sizeof(SuperfetchInfo),
 			&ResultLength);
-		if (!NT_SUCCESS(Status)) {
-			printf("Failure querying memory ranges!\n");
-			return Status;
+		if (Status == STATUS_BUFFER_TOO_SMALL && ResultLength > Length) {
+			::HeapFree(::GetProcessHeap(), 0, Buffer);
+			Length = ResultLength;
+			continue;
 		}
+		break;
+	}
+
+	if (!NT_SUCCESS(Status)) {
+		::HeapFree(::GetProcessHeap(), 0, Buffer);
+		return Status;
+	}
+
+	MemoryRangesBuffer = Buffer;
+	if (Version == 1) {
+		auto Info = static_cast<PPF_MEMORY_RANGE_INFO>(Buffer);
+		MemoryRangeCount = Info->RangeCount;
+		MemoryRanges = Info->Ranges;
 	}
 	else {
-		//
-		// Use local buffer
-		//
-		MemoryRanges = &MemoryRangeInfo;
+		auto Info = static_cast<PPF_MEMORY_RANGE_INFO_V2>(Buffer);
+		MemoryRangeCount = Info->RangeCount;
+		MemoryRanges = Info->Ranges;
 	}
 
 	return STATUS_SUCCESS;
 }
 
+NTSTATUS PfiQueryMemoryRanges() {
+	//
+	// Current builds only accept version 2; older ones only know version 1
+	//
+	NTSTATUS Status = PfiQueryMemoryRangesVersion(2);
+	if (!NT_SUCCESS(Status))
+		Status = PfiQueryMemoryRangesVersion(1);
+	if (!NT_SUCCESS(Status))
+		printf("Failure querying memory ranges (0x%X)\n", Status);
+	return Status;
+}
+
 void PfiDumpPfnRanges(VOID) {
 	PPHYSICAL_MEMORY_RUN Node;
 
-	for (ULONG i = 0; i < MemoryRanges->RangeCount; i++) {
+	for (ULONG i = 0; i < MemoryRangeCount; i++) {
 		//
 		// Print information on the range
 		//
-		Node = reinterpret_cast<PPHYSICAL_MEMORY_RUN>(&MemoryRanges->Ranges[i]);
+		Node = reinterpret_cast<PPHYSICAL_MEMORY_RUN>(&MemoryRanges[i]);
 #ifdef _WIN64
 		printf("Physical Memory Range: %p to %p (%lld pages, %lld KB)\n",
 #else
@@ -210,11 +215,11 @@ NTSTATUS PfiInitializePfnDatabase() {
 	//
 	// Loop all the ranges
 	//
-	for (k = 0, i = 0; i < MemoryRanges->RangeCount; i++) {
+	for (k = 0, i = 0; i < MemoryRangeCount; i++) {
 		//
 		// Print information on the range
 		//
-		Node = reinterpret_cast<PPHYSICAL_MEMORY_RUN>(&MemoryRanges->Ranges[i]);
+		Node = reinterpret_cast<PPHYSICAL_MEMORY_RUN>(&MemoryRanges[i]);
 		for (SIZE_T j = Node->BasePage; j < (Node->BasePage + Node->PageCount); j++) {
 			//
 			// Get the PFN and write the physical page number
@@ -256,18 +261,20 @@ PPF_PROCESS PfiFindProcess(IN ULONGLONG UniqueProcessKey) {
 	PPF_PROCESS FoundProcess;
 
 	//
-	// Sign-extend the key
+	// Older builds use the (truncated) EPROCESS address as the key, which must be
+	// sign-extended. Current builds hide kernel addresses and use the process ID,
+	// which must be compared as-is.
 	//
 #ifdef _WIN64
-	UniqueProcessKey |= 0xFFFF000000000000;
+	ULONGLONG ExtendedKey = UniqueProcessKey | 0xFFFF000000000000;
 #else
-	UniqueProcessKey |= 0xFFFFFFFF00000000;
+	ULONGLONG ExtendedKey = UniqueProcessKey | 0xFFFFFFFF00000000;
 #endif
 
 	NextEntry = MmProcessListHead.Flink;
 	while (NextEntry != &MmProcessListHead) {
 		FoundProcess = CONTAINING_RECORD(NextEntry, PF_PROCESS, ProcessLinks);
-		if (FoundProcess->ProcessKey == UniqueProcessKey)
+		if (FoundProcess->ProcessKey == UniqueProcessKey || FoundProcess->ProcessKey == ExtendedKey)
 			return FoundProcess;
 
 		NextEntry = NextEntry->Flink;
@@ -280,6 +287,7 @@ NTSTATUS PfiQueryPrivateSources() {
 	NTSTATUS Status;
 	SUPERFETCH_INFORMATION SuperfetchInfo;
 	PF_PRIVSOURCE_QUERY_REQUEST PrivateSourcesQuery = { 0 };
+	PPF_PRIVSOURCE_QUERY_REQUEST MmPrivateSources = &PrivateSourcesQuery;
 	ULONG ResultLength = 0;
 
 	/* Version 2 for Beta 2, Version 3 for RTM */
@@ -296,6 +304,8 @@ NTSTATUS PfiQueryPrivateSources() {
 		&ResultLength);
 	if (Status == STATUS_BUFFER_TOO_SMALL) {
 		MmPrivateSources = static_cast<PPF_PRIVSOURCE_QUERY_REQUEST>(::HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ResultLength));
+		if (!MmPrivateSources)
+			return STATUS_NO_MEMORY;
 		MmPrivateSources->Version = 8;
 
 		PfiBuildSuperfetchInfo(&SuperfetchInfo,
@@ -309,7 +319,12 @@ NTSTATUS PfiQueryPrivateSources() {
 			&ResultLength);
 		if (!NT_SUCCESS(Status)) {
 			printf("Superfetch Information Query Failed\n");
+			::HeapFree(::GetProcessHeap(), 0, MmPrivateSources);
+			return Status;
 		}
+	}
+	else if (!NT_SUCCESS(Status)) {
+		return Status;
 	}
 
 	//
@@ -355,16 +370,13 @@ NTSTATUS PfiQueryPrivateSources() {
 				ClientId.UniqueThread = 0;
 				NtOpenProcess(&Process->ProcessHandle, PROCESS_ALL_ACCESS, &ObjectAttributes, &ClientId);
 			}
-			else {
-				//
-				// Process exists -- clear stats
-				//
-				Process->ProcessPfnCount = 0;
-			}
+			// An already-known process keeps its PFNs: this runs again in the middle of
+			// PfiQueryPfnDatabase, and clearing the count there would drop pages already counted.
 		}
 	}
 
-	::HeapFree(::GetProcessHeap(), 0, MmPrivateSources);
+	if (MmPrivateSources != &PrivateSourcesQuery)
+		::HeapFree(::GetProcessHeap(), 0, MmPrivateSources);
 	return Status;
 }
 
@@ -535,6 +547,11 @@ NTSTATUS PfiQueryPfnDatabase() {
 	RtlZeroMemory(MmPageUseCounts, sizeof(MmPageUseCounts));
 
 	//
+	// Process keys still unknown after reloading the private sources (e.g. the process exited)
+	//
+	std::unordered_set<ULONGLONG> UnknownProcessKeys;
+
+	//
 	// Loop the database
 	//
 	for (ULONG i = 0; i < MmPfnDatabase->PfnCount; i++) {
@@ -565,39 +582,41 @@ NTSTATUS PfiQueryPfnDatabase() {
 			//
 			// Get the process structure
 			//
-			PPF_PROCESS Process;
-		TryAgain:
-			Process = PfiFindProcess(Pfn1->u1.e4.UniqueProcessKey);
+			ULONGLONG Key = Pfn1->u1.e4.UniqueProcessKey;
+			PPF_PROCESS Process = PfiFindProcess(Key);
+			if (!Process && UnknownProcessKeys.find(Key) == UnknownProcessKeys.end()) {
+				//
+				// The private sources changed during a query -- reload private sources once
+				//
+				PfiQueryPrivateSources();
+				Process = PfiFindProcess(Key);
+				if (!Process)
+					UnknownProcessKeys.insert(Key);
+			}
+
 			if (Process) {
-				//
-				// Add this to the process' PFN array
-				//
-				Process->ProcessPfns[Process->ProcessPfnCount] = i;
-				if (Process->ProcessPfnCount == Process->PrivatePages) {
+				if (Process->ProcessPfnCount >= Process->PrivatePages) {
 					//
 					// Our original estimate might be off, let's allocate some more PFNs
 					//
+					ULONG NewCapacity = Process->PrivatePages ? Process->PrivatePages * 2 : 64;
 					PLIST_ENTRY PreviousEntry, NextEntry;
 					PreviousEntry = Process->ProcessLinks.Blink;
 					NextEntry = Process->ProcessLinks.Flink;
-					Process = static_cast<PPF_PROCESS>(::HeapReAlloc(::GetProcessHeap(), 0, Process,
+					auto NewProcess = static_cast<PPF_PROCESS>(::HeapReAlloc(::GetProcessHeap(), 0, Process,
 						sizeof(PF_PROCESS) +
-						Process->PrivatePages * 2 * sizeof(ULONG)));
-					Process->PrivatePages *= 2;
+						NewCapacity * sizeof(ULONG)));
+					if (!NewProcess)
+						continue;
+					Process = NewProcess;
+					Process->PrivatePages = NewCapacity;
 					PreviousEntry->Flink = NextEntry->Blink = &Process->ProcessLinks;
 				}
 
 				//
-				// One more PFN
+				// Add this to the process' PFN array
 				//
-				Process->ProcessPfnCount++;
-			}
-			else {
-				//
-				// The private sources changed during a query -- reload private sources
-				//
-				PfiQueryPrivateSources();
-				goto TryAgain;
+				Process->ProcessPfns[Process->ProcessPfnCount++] = i;
 			}
 		}
 	}
@@ -614,12 +633,13 @@ VOID PfiDumpPfnEntry(ULONG i, IN BOOLEAN ShowFiles) {
 #else
 	CHAR VirtualAddress[11];
 #endif
-	CHAR Extra[11];
+	CHAR Extra[sizeof(VirtualAddress)];	// also holds a "0x%p" value
 
 	Pfn1 = MI_GET_PFN(i);
 
 	if ((Pfn1->u1.e1.UseDescription == MMPFNUSE_PROCESSPRIVATE) && (Pfn1->u1.e4.UniqueProcessKey != 0)) {
-		ProcessName = PfiFindProcess(Pfn1->u1.e4.UniqueProcessKey)->ProcessName;
+		auto Process = PfiFindProcess(Pfn1->u1.e4.UniqueProcessKey);
+		ProcessName = Process ? Process->ProcessName : "<unknown>";	// e.g. process exited
 	}
 
 	if ((Pfn1->u1.e1.UseDescription != MMPFNUSE_FILE) &&
@@ -636,7 +656,9 @@ VOID PfiDumpPfnEntry(ULONG i, IN BOOLEAN ShowFiles) {
 		sprintf_s(Extra, "0x%08p", reinterpret_cast<void*>(Pfn1->u1.e3.PageDirectoryBase));
 	}
 	else if (Pfn1->u1.e1.UseDescription == MMPFNUSE_FILE) {
-		FileName = PfiFindFile(((ULONG_PTR)Pfn1->u2.FileObject & ~0x1))->FileName;
+		auto File = PfiFindFile(((ULONG_PTR)Pfn1->u2.FileObject & ~0x1));
+		if (File)
+			FileName = File->FileName;
 		sprintf_s(Extra, "0x%07X", static_cast<ULONG>(Pfn1->u1.e2.Offset));
 	}
 	else {
@@ -806,7 +828,7 @@ PfiDumpProcessPfnEntry(ULONG i) {
 	sprintf_s(VirtualAddress, "0x%08p", Pfn1->u2.VirtualAddress);
 
 	Process = PfiFindProcess(Pfn1->u1.e4.UniqueProcessKey);
-	auto size = ::VirtualQueryEx(Process->ProcessHandle,
+	auto size = Process == nullptr ? 0 : ::VirtualQueryEx(Process->ProcessHandle,
 		Pfn1->u2.VirtualAddress,
 		&MemoryBasicInfo,
 		sizeof(MemoryBasicInfo));
