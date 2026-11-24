@@ -71,21 +71,40 @@ DWORD CIoPriorityDlg::IoThread(PVOID p) {
 
 	::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 
-	CString filename;
-	filename.Format(L"_File_%d", ::GetCurrentThreadId());
-	HANDLE hFile = ::CreateFile(filename, GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_FLAG_NO_BUFFERING | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
-	if (hFile == INVALID_HANDLE_VALUE)
-		return ::GetLastError();
-
-	const DWORD size = 1 << 10;
-	BYTE buffer[size];
-	DWORD written;
-
-	::WriteFile(hFile, buffer, size, &written, nullptr);
-	ULONGLONG count = 0;	// 64-bit: count * 1000 overflows a DWORD on fast disks
 	auto hDlg = pData->pThis->m_hWnd;
-	auto tick = ::GetTickCount();
 	CString status;
+
+	// Use the temp directory: the current directory may not be writable
+	WCHAR dir[MAX_PATH];
+	if (::GetTempPath(_countof(dir), dir) == 0)
+		wcscpy_s(dir, L".\\");
+	CString filename;
+	filename.Format(L"%s_IoPriority_%u.tmp", dir, ::GetCurrentThreadId());
+	HANDLE hFile = ::CreateFile(filename, GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_FLAG_NO_BUFFERING | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+	if (hFile == INVALID_HANDLE_VALUE) {
+		DWORD error = ::GetLastError();
+		status.Format(L"Failed to create test file (error %u)", error);
+		::SetDlgItemText(hDlg, pData->StatusId, status);
+		return error;
+	}
+
+	// FILE_FLAG_NO_BUFFERING requires sector-aligned buffers and sizes. VirtualAlloc
+	// gives page alignment, and 4 KB is a multiple of every common sector size.
+	const DWORD size = 1 << 12;
+	auto buffer = static_cast<BYTE*>(::VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+	DWORD written = 0;
+	if (!buffer || !::WriteFile(hFile, buffer, size, &written, nullptr) || written != size) {
+		DWORD error = buffer ? ::GetLastError() : ERROR_NOT_ENOUGH_MEMORY;
+		status.Format(L"Failed to write test file (error %u)", error);
+		::SetDlgItemText(hDlg, pData->StatusId, status);
+		if (buffer)
+			::VirtualFree(buffer, 0, MEM_RELEASE);
+		::CloseHandle(hFile);
+		return error;
+	}
+
+	ULONGLONG count = 0;	// 64-bit: count * 1000 overflows a DWORD on fast disks
+	auto tick = ::GetTickCount();
 	bool currentLowPriority = false;
 
 	while (!pData->pCancelEvent->Lock(0)) {
@@ -99,7 +118,11 @@ DWORD CIoPriorityDlg::IoThread(PVOID p) {
 		}
 
 		::SetFilePointer(hFile, 0, nullptr, FILE_BEGIN);
-		::ReadFile(hFile, buffer, size, &written, nullptr);
+		if (!::ReadFile(hFile, buffer, size, &written, nullptr)) {
+			status.Format(L"Read failed (error %u)", ::GetLastError());
+			::SetDlgItemText(hDlg, pData->StatusId, status);
+			break;
+		}
 		count += written;
 		auto current = ::GetTickCount();
 		if (current - tick < 500)
@@ -112,6 +135,7 @@ DWORD CIoPriorityDlg::IoThread(PVOID p) {
 
 	// cancellation
 
+	::VirtualFree(buffer, 0, MEM_RELEASE);
 	::CloseHandle(hFile);
 
 	return 0;

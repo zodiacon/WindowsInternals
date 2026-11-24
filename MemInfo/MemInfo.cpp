@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "MemInfo.h"
 #include <unordered_set>
+#include <cctype>
 
 #define SUPERFETCH_VERSION      45
 #define SUPERFETCH_MAGIC        'kuhC'
@@ -28,8 +29,8 @@ ULONG MemoryRangeCount;
 PVOID MemoryRangesBuffer;
 
 void PrintHeader() {
-	printf("MemInfo v3.10 - Show PFN database information\n");
-	printf("Copyright (C) 2007-2017 Alex Ionescu and Pavel Yosifovich\n");
+	printf("MemInfo v4.00 - Show PFN database information\n");
+	printf("Copyright (C) 2007-2026 Alex Ionescu and Pavel Yosifovich\n");
 	printf("http://www.windows-internals.com\n\n");
 }
 
@@ -44,7 +45,7 @@ void PrintUsage() {
 	printf("%6s    Display file names associated to memory mapped pages\n", "-f");
 	printf("%6s    Display information about each page in the process' working set\n", "-o");
 	printf("%6s    Display information on the given page frame index (PFN)\n", "-p");
-	printf("%6s    Display information on the given virtual address (must use -o)\n", "-v");
+	printf("%6s    Display information on the given virtual address (use -o PID to pick the process)\n", "-v");
 }
 
 void PfiBuildSuperfetchInfo(IN PSUPERFETCH_INFORMATION SuperfetchInfo, IN PVOID Buffer, IN ULONG Length, IN SUPERFETCH_INFORMATION_CLASS InfoClass) {
@@ -205,7 +206,10 @@ NTSTATUS PfiInitializePfnDatabase() {
 	//
 	// Build a bitmap of pages
 	//
-	BitMapBuffer = ::HeapAlloc(::GetProcessHeap(), 0, PfnCount / 8);
+	// RTL bitmaps operate on whole ULONGs, so round up
+	BitMapBuffer = ::HeapAlloc(::GetProcessHeap(), 0, ((PfnCount + 31) / 32) * sizeof(ULONG));
+	if (!BitMapBuffer)
+		return STATUS_NO_MEMORY;
 	RtlInitializeBitMap(&MmPfnBitMap, static_cast<PULONG>(BitMapBuffer), PfnCount);
 	RtlSetAllBits(&MmPfnBitMap);
 	MmVaBitmap = MmPfnBitMap;
@@ -436,6 +440,8 @@ NTSTATUS PfiQueryFileInfo() {
 
 	OutputLength = 16 * 1024 * 1024;
 	OutputBuffer = ::HeapAlloc(::GetProcessHeap(), HEAP_ZERO_MEMORY, OutputLength);
+	if (!OutputBuffer)
+		return STATUS_NO_MEMORY;
 
 	//
 	// Build the request
@@ -451,62 +457,74 @@ NTSTATUS PfiQueryFileInfo() {
 		sizeof(Request),
 		OutputBuffer,
 		&OutputLength);
-	if (!NT_SUCCESS(Status)) return Status;
+	if (!NT_SUCCESS(Status) || OutputLength < sizeof(PFFI_UNKNOWN)) {
+		::HeapFree(::GetProcessHeap(), 0, OutputBuffer);
+		return NT_SUCCESS(Status) ? STATUS_UNSUCCESSFUL : Status;
+	}
 
 	//
-	// Parse the log
+	// Parse the log, never trusting sizes beyond what the driver actually returned
 	//
 	LogHeader = static_cast<PPFFI_UNKNOWN>(OutputBuffer);
-	LogEntry = reinterpret_cast<PPFNL_LOG_ENTRY>(LogHeader + 1);
-	while (1) {
+	ULONG_PTR End = reinterpret_cast<ULONG_PTR>(OutputBuffer) + min(LogHeader->BufferSize, OutputLength);
+	ULONG_PTR Next = reinterpret_cast<ULONG_PTR>(LogHeader + 1);
+	while (Next + sizeof(PFNL_ENTRY_HEADER) <= End) {
+		LogEntry = reinterpret_cast<PPFNL_LOG_ENTRY>(Next);
+		ULONG Size = LogEntry->Header.Size;
+		if (Size < sizeof(PFNL_ENTRY_HEADER) || Size > End - Next)
+			break;	// malformed entry; a zero size would otherwise loop forever
+		ULONG_PTR EntryEnd = Next + Size;
+		Next = EntryEnd;
+
+		//
+		// What kind of entry is it?
+		//
+		PCWSTR Name;
+		ULONGLONG Key;
+		switch (LogEntry->Header.Type) {
+		case PfNLInfoTypeFile:
+			Name = LogEntry->FileInfo.Filename;
+			Key = LogEntry->FileInfo.Key;
+			break;
+
+		case PfNLInfoTypePfBacked:
+			Name = LogEntry->PfBackedInfo.SectionName;
+			Key = LogEntry->PfBackedInfo.Key;
+			break;
+
+		case PfNLInfoTypeVolume:
+			Name = LogEntry->VolumeInfo.VolumePath;
+			Key = LogEntry->VolumeInfo.Key;
+			break;
+
+		default:
+			continue;	// delete notifications etc. carry no name
+		}
+
+		if (reinterpret_cast<ULONG_PTR>(Name) >= EntryEnd)
+			continue;
+
 		//
 		// Do we already know about this file?
 		//
-		PPF_FILE File;
-		File = PfiFindFile(LogEntry->FileInfo.Key);
-		if (!File) {
-			//
-			// We don't, allocate it
-			//
-			File = static_cast<PPF_FILE>(::HeapAlloc(::GetProcessHeap(),
-				0,
-				sizeof(PF_FILE) +
-				LogEntry->Header.Size -
-				FIELD_OFFSET(PFNL_LOG_ENTRY, FileInfo)));
-			InsertTailList(&MmFileListHead, &File->FileLinks);
-			MmFileCount++;
-
-			//
-			// What kind of entry is it?
-			//
-			if (LogEntry->Header.Type == PfNLInfoTypeFile) {
-				//
-				// Copy the file name and key
-				//
-				wcscpy_s(File->FileName, MAX_PATH, LogEntry->FileInfo.Filename);
-				File->FileKey = LogEntry->FileInfo.Key;
-			}
-			else if (LogEntry->Header.Type == PfNLInfoTypeVolume) {
-				//
-				// Copy the volume path
-				//
-				wcscpy_s(File->FileName, MAX_PATH, LogEntry->VolumeInfo.VolumePath);
-			}
-			else {
-				//
-				// Copy the section name
-				//
-				wcscpy_s(File->FileName, MAX_PATH, LogEntry->PfBackedInfo.SectionName);
-				File->FileKey = LogEntry->PfBackedInfo.Key;
-			}
-		}
+		if (PfiFindFile(Key))
+			continue;
 
 		//
-		// Go to the next one
+		// The name may not be NUL-terminated; never read past the entry
 		//
-		LogEntry = reinterpret_cast<PPFNL_LOG_ENTRY>(((ULONG_PTR)LogEntry + LogEntry->Header.Size));
-		if (LogEntry >= (PVOID)((ULONG_PTR)OutputBuffer + LogHeader->BufferSize))
+		size_t NameLength = wcsnlen(Name, (EntryEnd - reinterpret_cast<ULONG_PTR>(Name)) / sizeof(WCHAR));
+		auto File = static_cast<PPF_FILE>(::HeapAlloc(::GetProcessHeap(),
+			0,
+			FIELD_OFFSET(PF_FILE, FileName) + (NameLength + 1) * sizeof(WCHAR)));
+		if (!File)
 			break;
+
+		wmemcpy(File->FileName, Name, NameLength);
+		File->FileName[NameLength] = L'\0';
+		File->FileKey = Key;
+		InsertTailList(&MmFileListHead, &File->FileLinks);
+		MmFileCount++;
 	}
 
 	//
@@ -909,23 +927,28 @@ PPF_PROCESS PfiLookupProcessByPid(IN HANDLE Pid) {
 	return nullptr;
 }
 
-ULONG
-PfiConvertVaToPa(IN ULONG_PTR Va) {
-	ULONG i;
-	PMMPFN_IDENTITY Pfn1 = NULL;
-	ULONG_PTR AlignedVa = PAGE_ROUND_DOWN(Va);
+const ULONG PFN_INDEX_NOT_FOUND = ~0UL;	// index 0 is a valid entry
 
-	//
-	// Is the address in the VA bitmap?
-	//
-	if (RtlTestBit(&MmVaBitmap, static_cast<ULONG>(AlignedVa >> PAGE_SHIFT))) {
-		for (i = 0; i < MmPfnDatabase->PfnCount; i++) {
-			Pfn1 = MI_GET_PFN(i);
-			if (Pfn1->u2.VirtualAddress == (PVOID)AlignedVa) return i;
-		}
+//
+// Finds the PFN database entry mapping Va. User addresses are per-process, so when
+// Process is given only that process' private pages are considered.
+//
+ULONG
+PfiConvertVaToPa(IN ULONG_PTR Va, IN PPF_PROCESS Process) {
+	PVOID AlignedVa = reinterpret_cast<PVOID>(PAGE_ROUND_DOWN(Va));
+
+	for (ULONG i = 0; i < MmPfnDatabase->PfnCount; i++) {
+		PMMPFN_IDENTITY Pfn1 = MI_GET_PFN(i);
+		if (Pfn1->u2.VirtualAddress != AlignedVa)
+			continue;
+		if (Process &&
+			(Pfn1->u1.e1.UseDescription != MMPFNUSE_PROCESSPRIVATE ||
+			 PfiFindProcess(Pfn1->u1.e4.UniqueProcessKey) != Process))
+			continue;
+		return i;
 	}
 
-	return 0;
+	return PFN_INDEX_NOT_FOUND;
 }
 
 ULONG PfiGetIndexForPfn(IN ULONG Pfn) {
@@ -938,7 +961,11 @@ ULONG PfiGetIndexForPfn(IN ULONG Pfn) {
 			return i;
 	}
 
-	return 0;
+	return PFN_INDEX_NOT_FOUND;
+}
+
+static bool IsFlag(const char* arg, char flag) {
+	return arg[0] == '-' && ::tolower(static_cast<unsigned char>(arg[1])) == flag && arg[2] == '\0';
 }
 
 int main(int argc, const char* argv[]) {
@@ -951,20 +978,34 @@ int main(int argc, const char* argv[]) {
 	// Check what we should do
 	//
 	for (int i = 1; i < argc; i++) {
-		//
-		// Simply case, user just wants memory ranges
-		//
-		//if (strstr(argv[i], "-i")) UseInteractive = i;
-		if (strstr(argv[i], "-r")) ShowRanges = i;
-		if (strstr(argv[i], "-a")) ShowAll = i;
-		if (strstr(argv[i], "-s")) ShowSummary = i;
-		if (strstr(argv[i], "-v")) ShowVirtual = i;
-		if (strstr(argv[i], "-p")) ShowPage = i;
-		if (strstr(argv[i], "-c")) ShowCache = i;
-		if (strstr(argv[i], "-u")) ShowUsage = i;
-		if (strstr(argv[i], "-w")) ShowWs = i;
-		if (strstr(argv[i], "-o")) ShowProcess = i;
-		if (strstr(argv[i], "-f")) ShowFiles = i;
+		if (IsFlag(argv[i], 'r')) ShowRanges = i;
+		else if (IsFlag(argv[i], 'a')) ShowAll = i;
+		else if (IsFlag(argv[i], 's')) ShowSummary = i;
+		else if (IsFlag(argv[i], 'c')) ShowCache = i;
+		else if (IsFlag(argv[i], 'u')) ShowUsage = i;
+		else if (IsFlag(argv[i], 'w')) ShowWs = i;
+		else if (IsFlag(argv[i], 'f')) ShowFiles = i;
+		else if (IsFlag(argv[i], 'o') || IsFlag(argv[i], 'v') || IsFlag(argv[i], 'p')) {
+			//
+			// These take a value: argv[i + 1] must exist
+			//
+			if (i + 1 >= argc) {
+				printf("Option %s requires a value.\n\n", argv[i]);
+				PrintUsage();
+				return 1;
+			}
+			switch (::tolower(static_cast<unsigned char>(argv[i][1]))) {
+			case 'o': ShowProcess = i; break;
+			case 'v': ShowVirtual = i; break;
+			case 'p': ShowPage = i; break;
+			}
+			i++;	// skip the value
+		}
+		else {
+			printf("Unknown argument: %s\n\n", argv[i]);
+			PrintUsage();
+			return 1;
+		}
 	}
 
 	//
@@ -1115,46 +1156,33 @@ int main(int argc, const char* argv[]) {
 				//
 				// Dump all pages for a given PID
 				//
+				PPF_PROCESS Process = nullptr;
 				if (ShowProcess) {
 					//
-					// Make sure a PID was entered
+					// First, get the process structure (the parser guarantees a value follows -o)
 					//
-					if (argc < 3) {
-						printf("You must enter a process ID for this option to work!\n");
-						return 1;
-					}
-
-					//
-					// First, get the process structure
-					//
-					auto Process = PfiLookupProcessByPid(reinterpret_cast<HANDLE>(static_cast<long long>(strtoul(argv[ShowProcess + 1], NULL, 0))));
+					auto Pid = strtoul(argv[ShowProcess + 1], NULL, 0);
+					Process = PfiLookupProcessByPid(reinterpret_cast<HANDLE>(static_cast<ULONG_PTR>(Pid)));
 					if (!Process) {
-						printf("Process ID %d could not be found\n", strtoul(argv[ShowProcess + 1], NULL, 0));
+						printf("Process ID %lu could not be found\n", Pid);
 						return 1;
 					}
 
 					//
-					// Now dump pages belonging to it
+					// Now dump pages belonging to it, unless -o only scopes a -v lookup
 					//
-					PfiDumpProcess(Process);
+					if (!ShowVirtual)
+						PfiDumpProcess(Process);
 				}
 				//
 				// Handle a slighly more complex request
 				//
 				if (ShowVirtual) {
 					//
-					// Make sure a VA was entered
+					// First get the page index (64-bit parse: strtoul would truncate on x64)
 					//
-					if (argc < 3) {
-						printf("You must enter a virtual address for this option to work!\n");
-						return 1;
-					}
-
-					//
-					// First get the page index
-					//
-					auto Page = PfiConvertVaToPa(strtoul(argv[ShowVirtual + 1], NULL, 16));
-					if (Page) {
+					auto Page = PfiConvertVaToPa(static_cast<ULONG_PTR>(_strtoui64(argv[ShowVirtual + 1], NULL, 16)), Process);
+					if (Page != PFN_INDEX_NOT_FOUND) {
 						//
 						// Dump the single entry
 						//
@@ -1170,18 +1198,10 @@ int main(int argc, const char* argv[]) {
 				//
 				if (ShowPage) {
 					//
-					// Make sure a VA was entered
-					//
-					if (argc < 3) {
-						printf("You must enter a page frame number for this option to work!\n");
-						return 1;
-					}
-
-					//
 					// First, get the page index
 					//
 					auto Page = PfiGetIndexForPfn(strtoul(argv[ShowPage + 1], NULL, 16));
-					if (Page) {
+					if (Page != PFN_INDEX_NOT_FOUND) {
 						//
 						// Dump the single entry
 						//
@@ -1198,11 +1218,9 @@ int main(int argc, const char* argv[]) {
 				return 1;
 			}
 		}
-		else if (!ShowRanges) {
-			//
-			// No valid parameters
-			//
-			PrintUsage();
+		else {
+			printf("Failed to query %s (0x%X)\n", ShowFiles ? "private sources or file information" : "private sources", status);
+			return 1;
 		}
 
 		return 0;

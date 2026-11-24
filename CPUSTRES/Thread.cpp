@@ -9,7 +9,7 @@
 // CThread
 
 CThread::CThread() {
-	int cpus = CGlobals::GetProcessorCount();
+	int cpus = CGlobals::GetGroupProcessorCount();
 	if (cpus == sizeof(DWORD_PTR) * 8)
 		m_Affinity = (DWORD_PTR)-1;
 	else
@@ -19,6 +19,9 @@ CThread::CThread() {
 }
 
 CThread::~CThread() {
+	// The worker reads this object's members; make sure it has exited first
+	if (m_hThread && ::WaitForSingleObject(m_hThread, 0) == WAIT_TIMEOUT)
+		Terminate();
 	::CloseHandle(m_hThread);
 	::CloseHandle(m_hTerminate);
 }
@@ -94,10 +97,14 @@ long long CThread::GetCPUTime(const LARGE_INTEGER& frequency) const {
 	return cpu;
 }
 
-void CThread::Terminate() {
+void CThread::RequestStop() {
 	m_ActivityLevel = ActivityLevel::None;
 	::SetEvent(m_hTerminate);
 	Resume();
+}
+
+void CThread::Terminate() {
+	RequestStop();
 	if (::WaitForSingleObject(m_hThread, 500) == WAIT_TIMEOUT)
 		::TerminateThread(m_hThread, 1);
 }

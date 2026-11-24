@@ -125,35 +125,57 @@ bool ArgumentIs(int index, const char* value) {
 	return ::_strcmpi(value, arg + 1) == 0;
 }
 
+// Returns pointers to every SYSTEM_CPU_SET_INFORMATION entry; the storage lives in buffer.
+// Entries are walked by their Size field, which may grow in future Windows versions.
+std::vector<PSYSTEM_CPU_SET_INFORMATION> QueryCpuSets(HANDLE hProcess, std::vector<BYTE>& buffer) {
+	std::vector<PSYSTEM_CPU_SET_INFORMATION> sets;
+	ULONG length = 0;
+	::GetSystemCpuSetInformation(nullptr, 0, &length, hProcess, 0);
+	if (length == 0)
+		return sets;
+
+	buffer.resize(length);
+	if (!::GetSystemCpuSetInformation(reinterpret_cast<PSYSTEM_CPU_SET_INFORMATION>(buffer.data()), length, &length, hProcess, 0))
+		return sets;
+
+	for (ULONG offset = 0; offset + sizeof(SYSTEM_CPU_SET_INFORMATION) <= length; ) {
+		auto set = reinterpret_cast<PSYSTEM_CPU_SET_INFORMATION>(buffer.data() + offset);
+		if (set->Size == 0)
+			break;
+		sets.push_back(set);
+		offset += set->Size;
+	}
+	return sets;
+}
+
 void PrintSystemCpuSets(int pid, int index = -1) {
 	HANDLE hProcess = nullptr;
 	if (pid) {
 		hProcess = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+		if (!hProcess)
+			printf("Error opening process %d (%u); showing system CPU sets only\n\n", pid, ::GetLastError());
 	}
 
 	printf("System CPU Sets\n");
 	printf("---------------\n");
 
-	auto size = 0x20 * 64;
-	auto cpuSet = static_cast<PSYSTEM_CPU_SET_INFORMATION>(::malloc(size));
+	std::vector<BYTE> buffer;
+	auto cpuSets = QueryCpuSets(hProcess, buffer);
+	if (cpuSets.empty())
+		printf("Failed to get CPU set information (%u)\n", ::GetLastError());
 
-	ULONG length;
-	auto success = ::GetSystemCpuSetInformation(cpuSet, size, &length, hProcess, 0);
-
-	int count = length / cpuSet->Size;;
+	int count = static_cast<int>(cpuSets.size());
 	printf("Total CPU Sets: %d\n", count);
 
 	for (int i = 0; i < count; i++) {
 		if (index < 0 || index == i) {
 			printf("\nCPU Set %d\n", i);
-			PrintSystemCpuSet(cpuSet[i], hProcess != nullptr);
+			PrintSystemCpuSet(*cpuSets[i], hProcess != nullptr);
 		}
 	}
 
 	if (hProcess)
 		::CloseHandle(hProcess);
-
-	::free(cpuSet);
 }
 
 void PrintAllowedCpuSet(int pid) {
@@ -269,20 +291,35 @@ BOOL SetPrivilege(HANDLE hToken, PCTSTR lpszPrivilege, bool bEnablePrivilege) {
 	return TRUE;
 }
 
-std::vector<ULONG> BuildIdsFromMask(ULONG64* set, ULONG count) {
-	int index = 0x100;	// first set
-	std::vector<ULONG> ids;
+// Maps per-group masks (element i = processor group i, bit n = logical processor n in that
+// group) to CPU set IDs, using the actual system CPU set table rather than assuming the IDs
+// are contiguous from 0x100. Fails if a bit names a processor that doesn't exist.
+bool BuildIdsFromMask(const ULONG64* set, ULONG count, std::vector<ULONG>& ids) {
+	ULONG64 matched[64] = {};	// bits found, per group (Windows has at most 64 groups)
+	if (count > _countof(matched))
+		return false;
 
-	for (ULONG i = 0; i < count; i++) {
-		auto mask = set[i];
-		while (mask) {
-			if (mask & 1)
-				ids.push_back(index);
-			index++;
-			mask >>= 1;
+	std::vector<BYTE> buffer;
+	auto cpuSets = QueryCpuSets(nullptr, buffer);
+
+	ids.clear();
+	for (auto cpuSet : cpuSets) {
+		if (cpuSet->Type != CpuSetInformation)
+			continue;
+		auto group = cpuSet->CpuSet.Group;
+		auto lp = cpuSet->CpuSet.LogicalProcessorIndex;
+		if (group < count && lp < 64 && (set[group] & (1ULL << lp))) {
+			ids.push_back(cpuSet->CpuSet.Id);
+			matched[group] |= 1ULL << lp;
 		}
 	}
-	return ids;
+
+	for (ULONG i = 0; i < count; i++)
+		if (matched[i] != set[i]) {
+			printf("Mask 0x%llX for group %u includes processors that don't exist\n", set[i], i);
+			return false;
+		}
+	return true;
 }
 
 int main(int argc, char** argv) {
@@ -324,13 +361,16 @@ int main(int argc, char** argv) {
 			index++;
 		}
 
-		else if (ArgumentIs(index, "n")) {
-			n = atoi(argv[index + 1]);
-			index += 2;
-		}
-
-		else if (ArgumentIs(index, "p")) {
-			pid = atoi(argv[index + 1]);
+		else if (ArgumentIs(index, "n") || ArgumentIs(index, "p")) {
+			if (index == argc - 1) {
+				printf("Error: missing value after %s\n", argv[index]);
+				PrintUsage();
+				return 1;
+			}
+			if (ArgumentIs(index, "n"))
+				n = atoi(argv[index + 1]);
+			else
+				pid = atoi(argv[index + 1]);
 			index += 2;
 		}
 		else if (ArgumentIs(index, "s")) {
@@ -370,7 +410,11 @@ int main(int argc, char** argv) {
 		BOOL success;
 		if (hProcess) {
 			if (pSet) {
-				auto ids = BuildIdsFromMask(pSet, count);
+				std::vector<ULONG> ids;
+				if (!BuildIdsFromMask(pSet, count, ids)) {
+					::CloseHandle(hProcess);
+					return 1;
+				}
 				success = ::SetProcessDefaultCpuSets(hProcess, ids.data(), (ULONG)ids.size());
 			}
 			else {

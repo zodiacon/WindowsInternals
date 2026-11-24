@@ -44,7 +44,7 @@ BOOL CAffinityDlg::OnInitDialog() {
 
 	CRect rc;
 	GetDlgItem(IDC_DUMMY)->GetClientRect(&rc);
-	int cpus = CGlobals::GetProcessorCount();
+	int cpus = CGlobals::GetGroupProcessorCount();
 
 	DWORD_PTR processAffinity, systemAffinity;
 	BOOL validAffinity = FALSE;
@@ -133,7 +133,7 @@ void CAffinityDlg::DisableNonProcessAffinity() {
 
 DWORD_PTR CAffinityDlg::CalcAffinity() {
 	DWORD_PTR affinity = 0;
-	for(int i = 0; i < CGlobals::GetProcessorCount(); i++)
+	for(int i = 0; i < CGlobals::GetGroupProcessorCount(); i++)
 		if(m_Buttons[i].GetCheck() == BST_CHECKED)
 			affinity |= (DWORD_PTR)1 << i;
 	return affinity;
@@ -154,11 +154,11 @@ void CAffinityDlg::OnOK() {
 }
 
 void CAffinityDlg::OnBnClickedSelectall() {
-	for(int i = 0; i < CGlobals::GetProcessorCount(); i++)
+	for(int i = 0; i < CGlobals::GetGroupProcessorCount(); i++)
 		CheckDlgButton(IDC_FIRST + i, BST_CHECKED);
 }
 
 void CAffinityDlg::OnBnClickedUnselectall() {
-	for(int i = 0; i < CGlobals::GetProcessorCount(); i++)
+	for(int i = 0; i < CGlobals::GetGroupProcessorCount(); i++)
 		CheckDlgButton(IDC_FIRST + i, BST_UNCHECKED);
 }

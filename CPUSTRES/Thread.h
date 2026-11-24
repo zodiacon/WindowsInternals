@@ -52,7 +52,8 @@ public:
 
 	long long GetCPUTime(const LARGE_INTEGER& frequency) const;
 
-	void Terminate();
+	void RequestStop();	// signal the thread to exit without waiting
+	void Terminate();	// signal and wait (forcibly terminating after 500 ms)
 	void Suspend();
 	void Resume();
 	void SetActivityLevel(ActivityLevel level) {

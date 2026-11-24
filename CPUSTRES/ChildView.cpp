@@ -21,7 +21,13 @@ using namespace std;
 
 CChildView::CChildView() : m_List(m_Threads) {}
 
-CChildView::~CChildView() {}
+CChildView::~CChildView() {
+	// Signal every worker first so they exit in parallel; each CThread
+	// destructor then waits for its own thread before freeing the object.
+	for (auto& thread : m_Threads)
+		thread->RequestStop();
+	m_Threads.clear();
+}
 
 BEGIN_MESSAGE_MAP(CChildView, CWnd)
 	ON_WM_PAINT()
@@ -200,14 +206,23 @@ void CChildView::UpdateThread(int n, const CThread* thread) {
 
 PCWSTR CChildView::ActivityLevelToString(ActivityLevel level) {
 	static const PCWSTR Levels[] = { L"Low", L"Medium", L"Busy", L"Maximum" };
-	return Levels[(int)level - 1];
+	int index = (int)level - 1;
+	return index >= 0 && index < _countof(Levels) ? Levels[index] : L"None";
 }
 
 PCWSTR CChildView::ThreadPriorityToString(int priority) {
-	static const PCWSTR Levels[] = {
-		L"Idle", L"Lowest", L"Below Normal", L"Normal", L"Above Normal", L"Highest", L"Time Critical"
-	};
-	return Levels[3 + (::abs(priority) == 15 ? priority - 12 * priority / 15 : priority)];
+	// GetThreadPriority can also return realtime-class values (-7..-3, 3..6)
+	// and THREAD_PRIORITY_ERROR_RETURN, so map explicitly rather than index.
+	switch (priority) {
+	case THREAD_PRIORITY_IDLE: return L"Idle";
+	case THREAD_PRIORITY_LOWEST: return L"Lowest";
+	case THREAD_PRIORITY_BELOW_NORMAL: return L"Below Normal";
+	case THREAD_PRIORITY_NORMAL: return L"Normal";
+	case THREAD_PRIORITY_ABOVE_NORMAL: return L"Above Normal";
+	case THREAD_PRIORITY_HIGHEST: return L"Highest";
+	case THREAD_PRIORITY_TIME_CRITICAL: return L"Time Critical";
+	}
+	return L"Other";
 }
 
 void CChildView::UpdateThreadProcessIndices() {

@@ -27,7 +27,10 @@ PCSTR VersionToString(const PACKAGE_VERSION* version) {
 
 void DisplayCapability(const SID_AND_ATTRIBUTES& saa) {
 	PWSTR sid;
-	::ConvertSidToStringSid(saa.Sid, &sid);
+	if (!::ConvertSidToStringSid(saa.Sid, &sid)) {
+		printf("(invalid SID)\n");
+		return;
+	}
 	auto it = capabilitiesMap.find(sid);
 	if (it != capabilitiesMap.end()) {
 		printf("%ws (%ws)", it->second.c_str(), sid);
@@ -133,13 +136,20 @@ typedef NTSTATUS(NTAPI *PRtlDeriveCapabilitySidsFromName)(
 void BuildCapabilityMap() {
 	auto RtlDeriveCapabilitySidsFromName = (PRtlDeriveCapabilitySidsFromName)::GetProcAddress(
 		::GetModuleHandle(L"ntdll"), "RtlDeriveCapabilitySidsFromName");
+	if (!RtlDeriveCapabilitySidsFromName)
+		return;	// pre-Windows 10: capabilities are shown as raw SIDs
 
 	UNICODE_STRING capname;
 	auto hModule = ::GetModuleHandle(nullptr);
 	auto hResource = ::FindResource(hModule, MAKEINTRESOURCE(IDR_CAPS), L"TXT");
+	if (!hResource)
+		return;
 
 	auto hGlobal = ::LoadResource(hModule, hResource);
-	PCSTR caps = (PCSTR)::LockResource(hGlobal);
+	auto caps = static_cast<PCSTR>(::LockResource(hGlobal));
+	DWORD size = ::SizeofResource(hModule, hResource);
+	if (!caps || size == 0)
+		return;
 
 	auto sid1buffer = make_unique<BYTE[]>(SECURITY_MAX_SID_SIZE);
 	auto sid2buffer = make_unique<BYTE[]>(SECURITY_MAX_SID_SIZE);
@@ -147,13 +157,23 @@ void BuildCapabilityMap() {
 	auto sid1 = reinterpret_cast<PSID>(sid1buffer.get());
 	auto sid2 = reinterpret_cast<PSID>(sid2buffer.get());
 
-	do {
-		auto cr = ::strstr(caps, "\n");
-		if (!cr) break;
+	//
+	// The resource is not NUL-terminated: stay within its size. Accept CRLF or LF line
+	// endings, skip blank lines, and handle a last line without a newline.
+	//
+	const char* end = caps + size;
+	for (const char* line = caps; line < end; ) {
+		auto eol = static_cast<const char*>(memchr(line, '\n', end - line));
+		const char* next = eol ? eol + 1 : end;
+		if (!eol)
+			eol = end;
+		if (eol > line && eol[-1] == '\r')
+			eol--;
 
-		string name(caps, cr - 1);
-		if (name.size() == 0)
-			break;
+		string name(line, eol);
+		line = next;
+		if (name.empty())
+			continue;
 
 		wstring wname(name.begin(), name.end());
 		RtlInitUnicodeString(&capname, wname.c_str());
@@ -166,11 +186,7 @@ void BuildCapabilityMap() {
 				::LocalFree(ssid);
 			}
 		}
-		if (*cr == '\r')
-			cr++;
-		caps = cr + 1;
-	} while (true);
-
+	}
 }
 
 int main(int argc, char* argv[]) {
@@ -184,9 +200,15 @@ int main(int argc, char* argv[]) {
 		DWORD size = 0;
 		unique_ptr<DWORD[]> pid;
 
-		while (!pid || count < size / sizeof(DWORD)) {
+		// EnumProcesses succeeds even when the buffer is too small; a completely
+		// full buffer means there may be more processes, so grow and retry.
+		for (;;) {
 			pid = make_unique<DWORD[]>(count);
-			if (::EnumProcesses(pid.get(), count * sizeof(DWORD), &size))
+			if (!::EnumProcesses(pid.get(), count * sizeof(DWORD), &size)) {
+				printf("Failed to enumerate processes (error=%d)\n", ::GetLastError());
+				return 1;
+			}
+			if (size < count * sizeof(DWORD))
 				break;
 			count *= 2;
 		}
