@@ -48,7 +48,8 @@ public:
 	DWORD_PTR GetAffinity() const;
 
 	DWORD SetIdealCPU(int n);
-	int GetIdealCPU() const;
+	int GetIdealCPU() const;	// processor number within its group, or -1 on failure
+	bool GetIdealProcessor(PROCESSOR_NUMBER& number) const;
 
 	long long GetCPUTime(const LARGE_INTEGER& frequency) const;
 

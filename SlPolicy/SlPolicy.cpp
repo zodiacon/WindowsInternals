@@ -73,7 +73,7 @@ struct LicenseFacility {
 
 	{ L"LSA Policy", L"LSA", {
 			{ L"LSA-Policy-EnableCredentialIsolation", "Enable credential isolation", ValueType::Bool },
-			{ L"LSA-Policy-EnableTrustedDomains", "Enable transted domains", ValueType::Bool }
+			{ L"LSA-Policy-EnableTrustedDomains", "Enable trusted domains", ValueType::Bool }
 		}
 	},
 
@@ -105,7 +105,7 @@ struct LicenseFacility {
 			{ L"Shell-InBoxGames-FreeCell-EnableGame", "FreeCell enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-Hearts-EnableGame", "Hearts enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-Minesweeper-EnableGame", "Minesweeper enabled", ValueType::Bool },
-			{ L"Shell-InBoxGames-PurblePlace-EnableGame", "Purble Place enabled enabled", ValueType::Bool },
+			{ L"Shell-InBoxGames-PurblePlace-EnableGame", "Purble Place enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-Shanghai-EnableGame", "Shanghai enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-Solitaire-EnableGame", "Solitaire enabled", ValueType::Bool },
 			{ L"Shell-InBoxGames-SpiderSolitaire-EnableGame", "Spider Solitaire enabled", ValueType::Bool },
@@ -151,7 +151,10 @@ void ListValuesInFacility(int facility) {
 	if (facilityName.AlternateName)
 		printf(" (%ws)", facilityName.AlternateName);
 
-	printf("\n%s\n", std::string(wcslen(facilityName.FacilityName), '-').c_str());
+	auto titleLength = wcslen(facilityName.FacilityName);
+	if (facilityName.AlternateName)
+		titleLength += wcslen(facilityName.AlternateName) + 3;	// " (" + ")"
+	printf("\n%s\n", std::string(titleLength, '-').c_str());
 	for (int i = 0; i < MaxValuesInFacility; i++) {
 		const auto& valueName = facilities[facility].Values[i];
 		if (valueName.Name == nullptr)

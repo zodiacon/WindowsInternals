@@ -44,6 +44,7 @@ private:
 	long long m_LastProcessTimes = 0;
 	double m_ProcessCPU;
 	HANDLE m_hJob = nullptr;
+	int m_CpuRateLimit = 0;	// percent of total CPU; 0 = no limit
 	int m_CpuUpdateInterval = 1000, m_CpuUpdateIndex = 1;
 
 	void CreateThreads();
@@ -99,7 +100,8 @@ protected:
 
 	void OnUpdateStatusThreads(CCmdUI*);
 	void OnUpdateStatusProcessCpu(CCmdUI*);
-	afx_msg void OnProcessCpuratelimit();
+	void OnCpuRateLimit(UINT id);
+	void OnUpdateCpuRateLimit(CCmdUI*);
 	void OnCpuUpdateInterval(UINT id);
 	void OnUpdateCpuUpdateInterval(CCmdUI*);
 };

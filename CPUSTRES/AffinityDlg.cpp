@@ -104,7 +104,7 @@ BOOL CAffinityDlg::OnInitDialog() {
 		DisableNonProcessAffinity();
 
 	if(!m_Affinity) {
-		m_IdealCPU = m_pThread ? m_pThread->GetIdealCPU() : 0;
+		m_IdealCPU = m_pThread ? max(m_pThread->GetIdealCPU(), 0) : 0;
 	}
 	CDialogEx::OnInitDialog();
 

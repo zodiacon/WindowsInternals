@@ -173,13 +173,24 @@ NTSTATUS PfiInitializePfnDatabase() {
 	// Calculate maximum amount of memory required
 	//
 	PfnCount = MmHighestPhysicalPageNumber + 1;
-	MmPfnDatabaseSize = FIELD_OFFSET(PF_PFN_PRIO_REQUEST, PageData) +
-		PfnCount * sizeof(MMPFN_IDENTITY);
+	//
+	// The Superfetch request carries the buffer length as a ULONG, which limits it to 4 GB
+	// (roughly 680 GB of physical address space). Fail rather than truncate the size.
+	//
+	SIZE_T DatabaseSize = FIELD_OFFSET(PF_PFN_PRIO_REQUEST, PageData) +
+		static_cast<SIZE_T>(PfnCount) * sizeof(MMPFN_IDENTITY);
+	if (DatabaseSize > ~0UL) {
+		printf("Physical address space is too large to query the PFN database in one request.\n");
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+	MmPfnDatabaseSize = static_cast<ULONG>(DatabaseSize);
 
 	//
 	// Build the PFN List Information Request
 	//
 	PfnDbStart = MmPfnDatabase = static_cast<PPF_PFN_PRIO_REQUEST>(HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, MmPfnDatabaseSize));
+	if (!MmPfnDatabase)
+		return STATUS_NO_MEMORY;
 	MmPfnDatabase->Version = 1;
 	MmPfnDatabase->RequestFlags = 1;
 
@@ -372,7 +383,9 @@ NTSTATUS PfiQueryPrivateSources() {
 				InitializeObjectAttributes(&ObjectAttributes, NULL, 0, NULL, NULL);
 				ClientId.UniqueProcess = Process->ProcessId;
 				ClientId.UniqueThread = 0;
-				NtOpenProcess(&Process->ProcessHandle, PROCESS_ALL_ACCESS, &ObjectAttributes, &ClientId);
+				// VirtualQueryEx needs only PROCESS_QUERY_INFORMATION. Protected processes still
+				// refuse it; their pages then show UNKNOWN type and protection.
+				NtOpenProcess(&Process->ProcessHandle, PROCESS_QUERY_INFORMATION, &ObjectAttributes, &ClientId);
 			}
 			// An already-known process keeps its PFNs: this runs again in the middle of
 			// PfiQueryPfnDatabase, and clearing the count there would drop pages already counted.
@@ -555,7 +568,8 @@ NTSTATUS PfiQueryPfnDatabase() {
 		&SuperfetchInfo,
 		sizeof(SuperfetchInfo),
 		&ResultLength);
-	assert(Status == STATUS_SUCCESS);
+	if (!NT_SUCCESS(Status))
+		return Status;
 
 	//
 	// Initialize page counts
@@ -826,11 +840,36 @@ void PfiDumpPfnProcUsages(VOID) {
 	}
 }
 
+// Formats a page protection: the base protection, plus any modifier flags
+PCSTR PfiProtectionToString(DWORD Protect, PCHAR Buffer, size_t Size) {
+	PCSTR Base;
+	switch (Protect & 0xFF) {
+	case 0:							Base = "NONE"; break;	// reserved, or no access to the region
+	case PAGE_NOACCESS:				Base = "PAGE_NOACCESS"; break;
+	case PAGE_READONLY:				Base = "PAGE_READONLY"; break;
+	case PAGE_READWRITE:			Base = "PAGE_READWRITE"; break;
+	case PAGE_WRITECOPY:			Base = "PAGE_WRITECOPY"; break;
+	case PAGE_EXECUTE:				Base = "PAGE_EXECUTE"; break;
+	case PAGE_EXECUTE_READ:			Base = "PAGE_EXECUTE_READ"; break;
+	case PAGE_EXECUTE_READWRITE:	Base = "PAGE_EXECUTE_READWRITE"; break;
+	case PAGE_EXECUTE_WRITECOPY:	Base = "PAGE_EXECUTE_WRITECOPY"; break;
+	default:
+		sprintf_s(Buffer, Size, "0x%X", Protect);
+		return Buffer;
+	}
+	sprintf_s(Buffer, Size, "%s%s%s%s", Base,
+		(Protect & PAGE_GUARD) ? "|GUARD" : "",
+		(Protect & PAGE_NOCACHE) ? "|NOCACHE" : "",
+		(Protect & PAGE_WRITECOMBINE) ? "|WRITECOMBINE" : "");
+	return Buffer;
+}
+
 VOID
 PfiDumpProcessPfnEntry(ULONG i) {
 	PMMPFN_IDENTITY Pfn1;
 	PCHAR Type = "UNKNOWN";
-	PCHAR Protect = "PAGE_NOACCESS";
+	PCSTR Protect = "UNKNOWN";
+	CHAR ProtectText[64];
 	PCHAR Usage = "Private";
 #ifdef _WIN64
 	CHAR VirtualAddress[19];
@@ -865,23 +904,7 @@ PfiDumpProcessPfnEntry(ULONG i) {
 			break;
 		}
 
-		switch (MemoryBasicInfo.Protect) {
-		case PAGE_EXECUTE:
-			Protect = "PAGE_EXECUTE";
-			break;
-
-		case PAGE_READWRITE:
-			Protect = "PAGE_READWRITE";
-			break;
-
-		case PAGE_READONLY:
-			Protect = "PAGE_READONLY";
-			break;
-
-		case PAGE_EXECUTE_READWRITE:
-			Protect = "PAGE_EXECUTE_READWRITE";
-			break;
-		}
+		Protect = PfiProtectionToString(MemoryBasicInfo.Protect, ProtectText, sizeof(ProtectText));
 	}
 
 	printf("0x%08p %-11s %d %-10s %-11s %-23s %-7s\n",

@@ -103,7 +103,15 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "A&ffinity...",                ID_PROCESS_AFFINITY
-        MENUITEM "CPU Rate &Limit...",          ID_PROCESS_CPURATELIMIT
+        POPUP "CPU Rate &Limit"
+        BEGIN
+            MENUITEM "&10% of total CPU",           ID_CPURATELIMIT_10
+            MENUITEM "&20% of total CPU",           ID_CPURATELIMIT_20
+            MENUITEM "&50% of total CPU",           ID_CPURATELIMIT_50
+            MENUITEM "&75% of total CPU",           ID_CPURATELIMIT_75
+            MENUITEM SEPARATOR
+            MENUITEM "&No Limit",                   ID_CPURATELIMIT_100
+        END
         MENUITEM "CPU &Set...",                 ID_CPUSETS_PROCESSCPUSET
         MENUITEM SEPARATOR
         MENUITEM "Create &Thread",              ID_PROCESS_CREATETHREAD

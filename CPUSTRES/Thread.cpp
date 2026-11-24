@@ -74,10 +74,13 @@ DWORD CThread::SetIdealCPU(int n) {
 	return ::SetThreadIdealProcessor(m_hThread, n);
 }
 
+bool CThread::GetIdealProcessor(PROCESSOR_NUMBER& number) const {
+	return ::GetThreadIdealProcessorEx(m_hThread, &number) != FALSE;
+}
+
 int CThread::GetIdealCPU() const {
 	PROCESSOR_NUMBER n;
-	::GetThreadIdealProcessorEx(m_hThread, &n);
-	return n.Number;
+	return GetIdealProcessor(n) ? n.Number : -1;
 }
 
 long long CThread::GetCPUTime(const LARGE_INTEGER& frequency) const {
@@ -88,7 +91,10 @@ long long CThread::GetCPUTime(const LARGE_INTEGER& frequency) const {
 	auto total = *(long long*)&kernel + *(long long*)&user;
 	long long cpu = 0;
 	if (m_LastCpu > 0) {
-		cpu = (total - m_LastCpu) * 10000 / ((counter.QuadPart - m_LastCounter.QuadPart) * 1000000LL / frequency.QuadPart);
+		// elapsed wall time in microseconds; zero if called twice in quick succession
+		auto elapsed = (counter.QuadPart - m_LastCounter.QuadPart) * 1000000LL / frequency.QuadPart;
+		if (elapsed > 0)
+			cpu = (total - m_LastCpu) * 10000 / elapsed;
 	}
 
 	m_LastCounter = counter;

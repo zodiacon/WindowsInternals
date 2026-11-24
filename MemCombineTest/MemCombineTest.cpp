@@ -24,6 +24,10 @@ int main() {
 
 	byte* p1 = static_cast<byte*>(::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
 	byte* p2 = static_cast<byte*>(::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
+	if (!p1 || !p2) {
+		printf("Failed to allocate memory (error %u)\n", ::GetLastError());
+		return 1;
+	}
 
 	BYTE pattern[16];
 	::srand(::GetTickCount());
@@ -52,8 +56,9 @@ int main() {
 	printf("Made a single byte change. Press any key to exit.\n");
 	getchar();
 
-	::VirtualFree(p1, 0, MEM_RELEASE | MEM_DECOMMIT);
-	::VirtualFree(p2, 0, MEM_RELEASE | MEM_DECOMMIT);
+	// MEM_RELEASE can't be combined with MEM_DECOMMIT; releasing also decommits
+	::VirtualFree(p1, 0, MEM_RELEASE);
+	::VirtualFree(p2, 0, MEM_RELEASE);
 
 	return 0;
 }

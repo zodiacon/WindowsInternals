@@ -235,10 +235,17 @@ void CIoPriorityDlg::OnBnClickedStart() {
 	SetDlgItemText(IDC_STATUS1, L"");
 	SetDlgItemText(IDC_STATUS2, L"");
 
-	for (int i = 0; i < 2; i++)
-		m_hThread[i] = ::CreateThread(nullptr, 0, IoThread, m_ThreadData + i, 0, nullptr);
-
 	m_Working = true;
+	for (int i = 0; i < 2; i++) {
+		m_hThread[i] = ::CreateThread(nullptr, 0, IoThread, m_ThreadData + i, 0, nullptr);
+		if (!m_hThread[i]) {
+			CString status;
+			status.Format(L"Failed to create thread (error %u)", ::GetLastError());
+			SetDlgItemText(m_ThreadData[i].StatusId, status);
+		}
+	}
+	if (!m_hThread[0] && !m_hThread[1])
+		StopThreads();	// re-enables Start
 }
 
 

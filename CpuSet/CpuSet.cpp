@@ -180,12 +180,12 @@ void PrintSystemCpuSets(int pid, int index = -1) {
 
 void PrintAllowedCpuSet(int pid) {
 	NTSTATUS status;
-	ULONG64 sets[20];
-	ULONG size;
+	ULONG64 sets[64];	// one mask per processor group
+	ULONG size = 0;
 	if (pid) {
 		HANDLE hProcess = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
 		if (!hProcess) {
-			printf("Error opening process (%d)\n", ::GetLastError());
+			printf("Error opening process (%u)\n", ::GetLastError());
 			return;
 		}
 
@@ -201,30 +201,34 @@ void PrintAllowedCpuSet(int pid) {
 		}
 
 		status = ::NtQueryInformationProcess(hProcess, ProcessDefaultCpuSetsInformation, sets, sizeof(sets), &size);
+		::CloseHandle(hProcess);
 	}
 	else {
-		HANDLE hProcess = nullptr;
-		status = ::NtQuerySystemInformationEx(SystemCpuSetInformation, &hProcess, sizeof(hProcess), sets, sizeof(sets), &size);
+		status = ::NtQuerySystemInformation(SystemAllowedCpuSetsInformation, sets, sizeof(sets), &size);
 	}
 	if (status == STATUS_SUCCESS) {
-		if (size == 0)
+		if (size == 0) {
 			printf("Empty CPU set\n");
+			return;
+		}
 		printf("CPU Masks: ");
 
 		for (ULONG i = 0; i < size / sizeof(ULONG64); i++) {
 			printf("0x%02I64X ", sets[i]);
 		}
 		printf("\n");
-
-		//for (ULONG i = 0; i < count; i++) {
-		//	printf("%d: ", i);
-		//	PrintDecHex("", ids[i]);
-		//}
 	}
 	else {
-		printf("Failed to get allowed CPU sets (%d)\n", ::GetLastError());
-		return;
+		printf("Failed to get allowed CPU sets (status 0x%08X)\n", status);
 	}
+}
+
+// Parses a non-negative decimal number
+bool ParseNumber(const char* text, unsigned long& value) {
+	char* end;
+	errno = 0;
+	value = strtoul(text, &end, 10);
+	return isdigit(static_cast<unsigned char>(*text)) && *end == 0 && errno == 0;
 }
 
 // Parses a comma-separated list of decimal or 0x-prefixed hex masks into pSet.
@@ -330,24 +334,12 @@ int main(int argc, char** argv) {
 		return 0;
 	}
 
-	HANDLE hToken = nullptr;
-	::OpenProcessToken(::GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken);
-
-	if (!SetPrivilege(hToken, SE_INC_BASE_PRIORITY_NAME, TRUE)) {
-		printf("Access denied. Try running from an elevated command prompt.\n");
-		return 1;
-	}
-	::CloseHandle(hToken);
-
-
 	int index = 1;
-	bool system = false;
 	DWORD pid = 0;
 	int n = -1;
 	ULONG64 systemCpuSet[20];
 	int count = 0;
 	bool change = false;
-	bool interrupt = false;
 
 	while (index < argc) {
 
@@ -356,21 +348,21 @@ int main(int argc, char** argv) {
 			return 0;
 		}
 
-		else if (ArgumentIs(index, "k")) {
-			system = true;
-			index++;
-		}
-
 		else if (ArgumentIs(index, "n") || ArgumentIs(index, "p")) {
 			if (index == argc - 1) {
 				printf("Error: missing value after %s\n", argv[index]);
 				PrintUsage();
 				return 1;
 			}
+			unsigned long value;
+			if (!ParseNumber(argv[index + 1], value) || value > MAXLONG) {
+				printf("Error: invalid number after %s: %s\n", argv[index], argv[index + 1]);
+				return 1;
+			}
 			if (ArgumentIs(index, "n"))
-				n = atoi(argv[index + 1]);
+				n = static_cast<int>(value);
 			else
-				pid = atoi(argv[index + 1]);
+				pid = value;
 			index += 2;
 		}
 		else if (ArgumentIs(index, "s")) {
@@ -394,6 +386,16 @@ int main(int argc, char** argv) {
 	}
 
 	if (change) {
+		HANDLE hToken;
+		if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+			return Error("Failed to open process token");
+		bool privilege = SetPrivilege(hToken, SE_INC_BASE_PRIORITY_NAME, TRUE);
+		::CloseHandle(hToken);
+		if (!privilege) {
+			printf("Access denied. Try running from an elevated command prompt.\n");
+			return 1;
+		}
+
 		HANDLE hProcess = nullptr;
 		if (pid) {
 			hProcess = ::OpenProcess(PROCESS_SET_LIMITED_INFORMATION, FALSE, pid);
@@ -420,11 +422,13 @@ int main(int argc, char** argv) {
 			else {
 				success = ::SetProcessDefaultCpuSets(hProcess, nullptr, 0);
 			}
-			if (success)
-				printf("Process CPU set changed successfully.\n");
-			else
-				return Error("Failed to change process CPU set");
+			DWORD error = ::GetLastError();
 			::CloseHandle(hProcess);
+			if (!success) {
+				::SetLastError(error);
+				return Error("Failed to change process CPU set");
+			}
+			printf("Process CPU set changed successfully.\n");
 		}
 		else {
 			// set system CPU set
@@ -433,7 +437,7 @@ int main(int argc, char** argv) {
 			if (status == STATUS_SUCCESS)
 				printf("System CPU set changed successfully.\n");
 			else
-				printf("Failed to change system CPU set (%d)\n", status);
+				printf("Failed to change system CPU set (status 0x%08X)\n", status);
 		}
 	}
 

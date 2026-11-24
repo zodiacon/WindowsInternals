@@ -17,6 +17,12 @@ int main() {
 	auto apiSetMap = static_cast<PAPI_SET_NAMESPACE>(peb->Reserved9[0]);
 	auto apiSetMapAsNumber = reinterpret_cast<ULONG_PTR>(apiSetMap);
 
+	// The structures in ApiSet.h describe schema version 6 (Windows 10 and later)
+	if (apiSetMap->Version != 6) {
+		printf("Unsupported API set schema version %u (only version 6 is supported)\n", apiSetMap->Version);
+		return 1;
+	}
+
 	auto nsEntry = reinterpret_cast<PAPI_SET_NAMESPACE_ENTRY>((apiSetMap->EntryOffset + apiSetMapAsNumber));
 
 	UNICODE_STRING nameString, valueString;
@@ -46,13 +52,6 @@ int main() {
 			printf("%wZ", &valueString);
 
 			//
-			// If there's more than one, add a comma
-			//
-			if ((j + 1) != nsEntry->ValueCount) {
-				printf(", ");
-			}
-
-			//
 			// If there's an alias...
 			//
 			if (valueEntry->NameLength != 0) {
@@ -63,6 +62,13 @@ int main() {
 				nameString.Length = static_cast<USHORT>(valueEntry->NameLength);
 				nameString.Buffer = reinterpret_cast<PWCHAR>(apiSetMapAsNumber + valueEntry->NameOffset);
 				printf(" [%wZ]", &nameString);
+			}
+
+			//
+			// If there's more than one, add a comma
+			//
+			if ((j + 1) != nsEntry->ValueCount) {
+				printf(", ");
 			}
 
 			valueEntry++;

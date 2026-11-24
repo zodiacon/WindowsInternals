@@ -39,9 +39,6 @@ CCPUStressExApp theApp;
 // CCPUStressExApp initialization
 
 BOOL CCPUStressExApp::InitInstance() {
-	int argc = 0;
-	auto argv = ::CommandLineToArgvW(::GetCommandLine(), &argc);
-
 	::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
 
 	// InitCommonControlsEx() is required on Windows XP if an application
@@ -64,7 +61,8 @@ BOOL CCPUStressExApp::InitInstance() {
 
 	m_pMainWnd = pFrame;
 	// create and load the frame with its resources
-	pFrame->LoadFrame(IDR_MAINFRAME, WS_OVERLAPPEDWINDOW, NULL, NULL);
+	if (!pFrame->LoadFrame(IDR_MAINFRAME, WS_OVERLAPPEDWINDOW, NULL, NULL))
+		return FALSE;
 	pFrame->SetWindowPos(nullptr, 0, 0, 640, 400, SWP_NOMOVE | SWP_NOZORDER | SWP_NOREPOSITION);
 
 	// The one and only window has been initialized, so show and update it

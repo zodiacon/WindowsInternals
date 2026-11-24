@@ -27,6 +27,8 @@ CChildView::~CChildView() {
 	for (auto& thread : m_Threads)
 		thread->RequestStop();
 	m_Threads.clear();
+	if (m_hJob)
+		::CloseHandle(m_hJob);	// the process stays in the job; this only drops our handle
 }
 
 BEGIN_MESSAGE_MAP(CChildView, CWnd)
@@ -69,7 +71,8 @@ BEGIN_MESSAGE_MAP(CChildView, CWnd)
 
 	ON_UPDATE_COMMAND_UI(ID_STATUS_THREAD, OnUpdateStatusThreads)
 	ON_UPDATE_COMMAND_UI(ID_STATUS_PROCESSCPU, OnUpdateStatusProcessCpu)
-	ON_COMMAND(ID_PROCESS_CPURATELIMIT, &CChildView::OnProcessCpuratelimit)
+	ON_COMMAND_RANGE(ID_CPURATELIMIT_10, ID_CPURATELIMIT_100, OnCpuRateLimit)
+	ON_UPDATE_COMMAND_UI_RANGE(ID_CPURATELIMIT_10, ID_CPURATELIMIT_100, OnUpdateCpuRateLimit)
 
 	ON_COMMAND_RANGE(ID_CPUUPDATEINTERVAL_0, ID_CPUUPDATEINTERVAL_10SECONDS, OnCpuUpdateInterval)
 	ON_UPDATE_COMMAND_UI_RANGE(ID_CPUUPDATEINTERVAL_0, ID_CPUUPDATEINTERVAL_10SECONDS, OnUpdateCpuUpdateInterval)
@@ -195,7 +198,13 @@ void CChildView::UpdateThread(int n, const CThread* thread) {
 	m_List.SetItemText(n, 2, thread->IsActive() ? L"Yes" : L"");
 	m_List.SetItemText(n, 3, ActivityLevelToString(thread->GetActivityLevel()));
 	m_List.SetItemText(n, 4, ThreadPriorityToString(thread->GetPriority()));
-	str.Format(L"%d", thread->GetIdealCPU());
+	PROCESSOR_NUMBER ideal;
+	if (!thread->GetIdealProcessor(ideal))
+		str = L"?";
+	else if (ideal.Group == 0)
+		str.Format(L"%u", ideal.Number);
+	else
+		str.Format(L"%u:%u", ideal.Group, ideal.Number);	// group:processor
 	m_List.SetItemText(n, 5, str);
 	WCHAR buffer[65];
 	_ui64tow_s(thread->GetAffinity(), buffer, 65, 2);
@@ -398,7 +407,7 @@ void CChildView::OnThreadIdealcpu() {
 void CChildView::OnThreadKill() {
 	auto threads = GetSelectedThreads();
 	CString text;
-	text.Format(L"Terminate %d thread(s)?", threads.size());
+	text.Format(L"Terminate %zu thread(s)?", threads.size());
 	if (AfxMessageBox(text, MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) == IDNO)
 		return;
 
@@ -480,7 +489,7 @@ void CChildView::OnCpusetsThreadselectedcpuset() {
 
 	HANDLE hThread = ::OpenThread(THREAD_SET_LIMITED_INFORMATION | THREAD_QUERY_LIMITED_INFORMATION, FALSE, thread->GetThreadId());
 	if (!hThread) {
-		AfxMessageBox(L"Failed to happen thread handle");
+		AfxMessageBox(L"Failed to open thread handle");
 		return;
 	}
 
@@ -548,12 +557,50 @@ void CChildView::OnUpdateStatusProcessCpu(CCmdUI* pCmdUI) {
 }
 
 
-void CChildView::OnProcessCpuratelimit() {
+// Menu IDs ID_CPURATELIMIT_10 .. ID_CPURATELIMIT_100 map to these rates (0 = no limit)
+static const int CpuRates[] = { 10, 20, 50, 75, 0 };
+static_assert(_countof(CpuRates) == ID_CPURATELIMIT_100 - ID_CPURATELIMIT_10 + 1, "CPU rate table doesn't match the menu IDs");
+
+void CChildView::OnCpuRateLimit(UINT id) {
+	int rate = CpuRates[id - ID_CPURATELIMIT_10];
+	if (rate == m_CpuRateLimit)
+		return;
+
 	if (m_hJob == nullptr) {
+		if (rate == 0)
+			return;		// never limited, nothing to remove
+
+		// A process can't leave a job, so create it once and only change its rate afterwards
 		m_hJob = ::CreateJobObject(nullptr, nullptr);
-		ASSERT(m_hJob);
-		VERIFY(::AssignProcessToJobObject(m_hJob, ::GetCurrentProcess()));
+		if (!m_hJob || !::AssignProcessToJobObject(m_hJob, ::GetCurrentProcess())) {
+			CString text;
+			text.Format(L"Failed to put the process in a job (error %u)", ::GetLastError());
+			AfxMessageBox(text, MB_ICONERROR);
+			if (m_hJob) {
+				::CloseHandle(m_hJob);
+				m_hJob = nullptr;
+			}
+			return;
+		}
 	}
+
+	// A hard cap on the whole process, as a share of all processors; CpuRate is in 1/100 of a percent
+	JOBOBJECT_CPU_RATE_CONTROL_INFORMATION info{};
+	if (rate) {
+		info.ControlFlags = JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP;
+		info.CpuRate = rate * 100;
+	}
+	if (!::SetInformationJobObject(m_hJob, JobObjectCpuRateControlInformation, &info, sizeof(info))) {
+		CString text;
+		text.Format(L"Failed to set the CPU rate limit (error %u)", ::GetLastError());
+		AfxMessageBox(text, MB_ICONERROR);
+		return;
+	}
+	m_CpuRateLimit = rate;
+}
+
+void CChildView::OnUpdateCpuRateLimit(CCmdUI* pCmdUI) {
+	pCmdUI->SetRadio(CpuRates[pCmdUI->m_nID - ID_CPURATELIMIT_10] == m_CpuRateLimit);
 }
 
 void CChildView::OnCpuUpdateInterval(UINT id) {

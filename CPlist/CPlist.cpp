@@ -14,7 +14,7 @@ vector<CLSID> EnumerateProviders() {
 	if (error == ERROR_SUCCESS) {
 		WCHAR name[128];
 		for (int i = 0; ; i++) {
-			DWORD len = 128;
+			DWORD len = _countof(name);	// in characters
 			error = ::RegEnumKeyEx(hKey, i, name, &len, nullptr, nullptr, nullptr, nullptr);
 			if (ERROR_SUCCESS != error)
 				break;
@@ -31,10 +31,11 @@ vector<CLSID> EnumerateProviders() {
 void ShowProviderInfo(const CLSID& clsid) {
 	// read name from registry
 	WCHAR sclsid[128], value[128], path[260];
-	::StringFromGUID2(clsid, sclsid, 128);
-	DWORD size = 128;
+	::StringFromGUID2(clsid, sclsid, _countof(sclsid));
+	// RegGetValue sizes are in bytes, not characters
+	DWORD size = sizeof(value);
 	auto error = ::RegGetValue(HKEY_CLASSES_ROOT, CString(L"CLSID\\") + sclsid, L"", RRF_RT_REG_SZ, nullptr, value, &size);
-	size = 260;
+	size = sizeof(path);
 	error |= ::RegGetValue(HKEY_CLASSES_ROOT, CString(L"CLSID\\") + sclsid + "\\InProcServer32", L"",
 		RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ, nullptr, path, &size);
 	if (error == ERROR_SUCCESS) {
