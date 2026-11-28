@@ -373,6 +373,21 @@ typedef struct _PFNL_VOLUME_INFO {
 } PFNL_VOLUME_INFO, *PPFNL_VOLUME_INFO;
 
 //
+// Volume Information NL Log Entry, FileInfo version 13 and later: the key is a full
+// pointer-sized value. The path still starts at the same offset as in the older layout.
+//
+typedef struct _PFNL_VOLUME_INFO_V13 {
+	LARGE_INTEGER CreationTime;
+	ULONGLONG Key;
+	ULONG SerialNumber;
+	ULONG DeviceType : 4;
+	ULONG DeviceFlags : 4;
+	ULONG Reserved : 24;
+	OBJECT_NAME_INFORMATION Path;
+	WCHAR VolumePath[ANYSIZE_ARRAY];
+} PFNL_VOLUME_INFO_V13, *PPFNL_VOLUME_INFO_V13;
+
+//
 // Delete Information NL Log Entry
 //
 typedef struct _PFNL_DELETE_ENTRY_INFO {
@@ -399,6 +414,7 @@ typedef struct _PFNL_LOG_ENTRY {
 		PFNL_FILE_INFO FileInfo;
 		PFNL_PFBACKED_INFO PfBackedInfo;
 		PFNL_VOLUME_INFO VolumeInfo;
+		PFNL_VOLUME_INFO_V13 VolumeInfoV13;
 		PFNL_DELETE_ENTRY_INFO DeleteEntryInfo;
 	};
 } PFNL_LOG_ENTRY, *PPFNL_LOG_ENTRY;
@@ -466,6 +482,14 @@ typedef struct _PFFI_UNKNOWN {
 	ULONG EntryCount;
 	ULONG Reserved3;
 } PFFI_UNKNOWN, *PPFFI_UNKNOWN;
+
+//
+// FileInfo version 13 and later: the header is one ULONG shorter, so log entries start
+// at offset 0x28. (Verified on build 29712: walking from there ends exactly at BufferSize
+// with EntryCount entries.)
+//
+#define PFFI_FILEINFO_VERSION_V13	13
+#define PFFI_HEADER_SIZE_V13		0x28
 
 typedef struct _IO_STATUS_BLOCK {
 	union {

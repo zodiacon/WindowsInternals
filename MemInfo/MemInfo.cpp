@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "MemInfo.h"
 #include <unordered_set>
+#include <unordered_map>
 #include <cctype>
 
 #define SUPERFETCH_VERSION      45
@@ -22,6 +23,9 @@ LIST_ENTRY MmProcessListHead;
 ULONG MmProcessCount;
 LIST_ENTRY MmFileListHead;
 ULONG MmFileCount;
+// Key -> file. The log can hold over half a million files, and every file-backed page
+// is looked up, so a list walk per lookup is far too slow.
+std::unordered_map<ULONGLONG, PPF_FILE> MmFileMap;
 ULONG MmPfnDatabaseSize;
 HANDLE PfiFileInfoHandle;
 PPF_PHYSICAL_MEMORY_RANGE MemoryRanges;	// points into MemoryRangesBuffer
@@ -397,12 +401,12 @@ NTSTATUS PfiQueryPrivateSources() {
 	return Status;
 }
 
-VOID PfiBuildFileInfoQuery(IN PPFFI_ENUMERATE_INFO Request) {
+VOID PfiBuildFileInfoQuery(IN PPFFI_ENUMERATE_INFO Request, IN ULONG Version) {
 	RtlZeroMemory(Request, sizeof(PFFI_ENUMERATE_INFO));
 	Request->ETWLoggerId = 1;
 	Request->LogForETW = TRUE;
 	Request->LogForSuperfetch = TRUE;
-	Request->Version = 12;
+	Request->Version = Version;
 }
 
 NTSTATUS
@@ -410,37 +414,25 @@ PfSvFICommand(HANDLE DeviceHandle, ULONG IoCtl, PVOID a3, int a4, PVOID a5, PULO
 	NTSTATUS Status;
 	IO_STATUS_BLOCK IoStatusBlock;
 
+	IoStatusBlock.Information = 0;
 	Status = NtDeviceIoControlFile(DeviceHandle, 0, 0, 0, &IoStatusBlock, IoCtl,
 		a3, a4, a5, *ResultLength);
-	if (Status < 0) {
+
+	//
+	// On STATUS_BUFFER_OVERFLOW (a warning, but negative as an NTSTATUS) Information holds
+	// the size the caller needs, so pass it back rather than zeroing it
+	//
+	if ((ULONG)Status >> 30 == 3)	// NT_ERROR: severity is error
 		*ResultLength = 0;
-	}
-	else {
-		if (IoCtl == 2228239 && IoStatusBlock.Status < 0) {
-			*ResultLength = static_cast<ULONG>(IoStatusBlock.Information);
-		}
-		else {
-			*ResultLength = static_cast<ULONG>(IoStatusBlock.Information);
-		}
-	}
+	else
+		*ResultLength = static_cast<ULONG>(IoStatusBlock.Information);
 
 	return Status;
 }
 
 PPF_FILE PfiFindFile(IN ULONGLONG UniqueFileKey) {
-	PLIST_ENTRY NextEntry;
-	PPF_FILE FoundFile;
-
-	NextEntry = MmFileListHead.Flink;
-	while (NextEntry != &MmFileListHead) {
-		FoundFile = CONTAINING_RECORD(NextEntry, PF_FILE, FileLinks);
-		if (FoundFile->FileKey == UniqueFileKey)
-			return FoundFile;
-
-		NextEntry = NextEntry->Flink;
-	}
-
-	return nullptr;
+	auto it = MmFileMap.find(UniqueFileKey);
+	return it == MmFileMap.end() ? nullptr : it->second;
 }
 
 NTSTATUS PfiQueryFileInfo() {
@@ -451,27 +443,51 @@ NTSTATUS PfiQueryFileInfo() {
 	ULONG OutputLength;
 	NTSTATUS Status;
 
-	OutputLength = 16 * 1024 * 1024;
-	OutputBuffer = ::HeapAlloc(::GetProcessHeap(), HEAP_ZERO_MEMORY, OutputLength);
-	if (!OutputBuffer)
-		return STATUS_NO_MEMORY;
+	//
+	// Request version 16 is what current builds accept (12 now fails with 0xC0000355);
+	// keep 12 as a fallback for older builds
+	//
+	static const ULONG Versions[] = { 16, 12 };
+	ULONG BufferSize = 4 * 1024 * 1024;
+	OutputBuffer = nullptr;
+	Status = STATUS_UNSUCCESSFUL;
+	for (ULONG v = 0; v < _countof(Versions); v++) {
+		PfiBuildFileInfoQuery(&Request, Versions[v]);
 
-	//
-	// Build the request
-	//
-	PfiBuildFileInfoQuery(&Request);
+		//
+		// The log can be well over 100 MB; grow the buffer to the size the driver asks for
+		//
+		for (int Attempt = 0; Attempt < 4; Attempt++) {
+			if (!OutputBuffer) {
+				OutputBuffer = ::VirtualAlloc(nullptr, BufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+				if (!OutputBuffer)
+					return STATUS_NO_MEMORY;
+			}
+			OutputLength = BufferSize;
+			Status = PfSvFICommand(PfiFileInfoHandle,
+				0x22000F,
+				&Request,
+				sizeof(Request),
+				OutputBuffer,
+				&OutputLength);
+			if (Status != STATUS_BUFFER_OVERFLOW && Status != STATUS_BUFFER_TOO_SMALL)
+				break;
 
-	//
-	// Send it
-	//
-	Status = PfSvFICommand(PfiFileInfoHandle,
-		0x22000F,
-		&Request,
-		sizeof(Request),
-		OutputBuffer,
-		&OutputLength);
+			// The log keeps growing, so leave some slack over the size reported
+			ULONG Needed = OutputLength > BufferSize ? OutputLength : BufferSize * 2;
+			if (Needed > ~0UL - 16 * 1024 * 1024)
+				break;
+			BufferSize = Needed + 16 * 1024 * 1024;
+			::VirtualFree(OutputBuffer, 0, MEM_RELEASE);
+			OutputBuffer = nullptr;
+		}
+		if (NT_SUCCESS(Status) || Status == STATUS_BUFFER_OVERFLOW || Status == STATUS_BUFFER_TOO_SMALL)
+			break;	// only an unsupported request version moves on to the next one
+	}
+
 	if (!NT_SUCCESS(Status) || OutputLength < sizeof(PFFI_UNKNOWN)) {
-		::HeapFree(::GetProcessHeap(), 0, OutputBuffer);
+		if (OutputBuffer)
+			::VirtualFree(OutputBuffer, 0, MEM_RELEASE);
 		return NT_SUCCESS(Status) ? STATUS_UNSUCCESSFUL : Status;
 	}
 
@@ -479,8 +495,9 @@ NTSTATUS PfiQueryFileInfo() {
 	// Parse the log, never trusting sizes beyond what the driver actually returned
 	//
 	LogHeader = static_cast<PPFFI_UNKNOWN>(OutputBuffer);
+	bool V13 = LogHeader->FileinfoVersion >= PFFI_FILEINFO_VERSION_V13;
 	ULONG_PTR End = reinterpret_cast<ULONG_PTR>(OutputBuffer) + min(LogHeader->BufferSize, OutputLength);
-	ULONG_PTR Next = reinterpret_cast<ULONG_PTR>(LogHeader + 1);
+	ULONG_PTR Next = reinterpret_cast<ULONG_PTR>(OutputBuffer) + (V13 ? PFFI_HEADER_SIZE_V13 : sizeof(PFFI_UNKNOWN));
 	while (Next + sizeof(PFNL_ENTRY_HEADER) <= End) {
 		LogEntry = reinterpret_cast<PPFNL_LOG_ENTRY>(Next);
 		ULONG Size = LogEntry->Header.Size;
@@ -506,8 +523,14 @@ NTSTATUS PfiQueryFileInfo() {
 			break;
 
 		case PfNLInfoTypeVolume:
-			Name = LogEntry->VolumeInfo.VolumePath;
-			Key = LogEntry->VolumeInfo.Key;
+			if (V13) {
+				Name = LogEntry->VolumeInfoV13.VolumePath;
+				Key = LogEntry->VolumeInfoV13.Key;
+			}
+			else {
+				Name = LogEntry->VolumeInfo.VolumePath;
+				Key = LogEntry->VolumeInfo.Key;
+			}
 			break;
 
 		default:
@@ -537,13 +560,14 @@ NTSTATUS PfiQueryFileInfo() {
 		File->FileName[NameLength] = L'\0';
 		File->FileKey = Key;
 		InsertTailList(&MmFileListHead, &File->FileLinks);
+		MmFileMap.emplace(Key, File);
 		MmFileCount++;
 	}
 
 	//
 	// Free the output buffer
 	//
-	::HeapFree(::GetProcessHeap(), 0, OutputBuffer);
+	::VirtualFree(OutputBuffer, 0, MEM_RELEASE);
 	return STATUS_SUCCESS;
 }
 
